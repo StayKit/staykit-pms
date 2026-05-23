@@ -6,7 +6,7 @@ import { PrismaClient } from "@prisma/client";
  * so the runtime and the Prisma CLI agree on one database file. (The CLI otherwise
  * resolves relative paths against the schema directory, which would diverge.)
  */
-function resolveDatabaseUrl(): string | undefined {
+export function resolveDatabaseUrl(): string | undefined {
   const url = process.env.DATABASE_URL;
   if (!url || !url.startsWith("file:")) return url;
   const [filePart, query] = url.slice("file:".length).split("?");

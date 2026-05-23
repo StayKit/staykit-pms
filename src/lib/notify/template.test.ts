@@ -26,4 +26,13 @@ describe("renderTemplate", () => {
   it("renders missing variables as empty strings", () => {
     expect(renderTemplate("Hello {{guest.unknown}}!", scope)).toBe("Hello !");
   });
+
+  it("applies the upper filter", () => {
+    expect(renderTemplate("{{property.name|upper}}", scope)).toBe("COORG COFFEE COTTAGE");
+  });
+
+  it("descends through nested objects and stops at non-objects", () => {
+    expect(renderTemplate("{{a.b.c}}", { a: { b: { c: "deep" } } })).toBe("deep");
+    expect(renderTemplate("{{a.b.c}}", { a: { b: "leaf" } })).toBe("");
+  });
 });

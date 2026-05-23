@@ -12,6 +12,10 @@ describe("inr (Indian numbering)", () => {
     expect(inr(945_50)).toBe("₹ 945.50");
     expect(inr(945_00)).toBe("₹ 945");
   });
+  it("renders negative amounts with a sign", () => {
+    expect(inr(-50000_00)).toBe("₹ -50,000");
+    expect(inr(-50000_00, false)).toBe("-50,000");
+  });
 });
 
 describe("paise <-> rupees", () => {

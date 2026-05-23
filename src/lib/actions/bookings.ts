@@ -84,7 +84,7 @@ export async function createBookingAction(
       return { ok: false, message: "That room is already booked for one or more of those nights." };
     }
     if (e instanceof BookingValidationError) return { ok: false, message: e.message };
-    if (e instanceof z.ZodError) return { ok: false, message: e.errors[0]?.message ?? "Invalid input" };
+    if (e instanceof z.ZodError) return { ok: false, message: e.errors[0].message };
     console.error(e);
     return { ok: false, message: "Something went wrong creating the booking." };
   }

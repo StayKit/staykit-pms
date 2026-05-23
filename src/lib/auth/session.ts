@@ -14,7 +14,18 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-const isProd = process.env.NODE_ENV === "production";
+function isProd(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
+/**
+ * Per the spec, session cookies use the `__Host-` prefix. That prefix is only valid
+ * over HTTPS (Secure), so we apply it in production and fall back to the bare name
+ * in dev/test where the app may run over http.
+ */
+export function cookieName(base: string): string {
+  return isProd() ? `__Host-${base}` : base;
+}
 
 export async function createStaffSession(userId: string) {
   const token = randomBytes(32).toString("base64url");
@@ -23,9 +34,9 @@ export async function createStaffSession(userId: string) {
     data: { userId, token: hashToken(token), scope: "staff", expiresAt },
   });
   const jar = await cookies();
-  jar.set(SESSION.staffCookie, token, {
+  jar.set(cookieName(SESSION.staffCookie), token, {
     httpOnly: true,
-    secure: isProd,
+    secure: isProd(),
     sameSite: "lax",
     path: "/",
     expires: expiresAt,
@@ -39,9 +50,9 @@ export async function createGuestSession(guestPhone: string) {
     data: { guestPhone, token: hashToken(token), scope: "guest", expiresAt },
   });
   const jar = await cookies();
-  jar.set(SESSION.guestCookie, token, {
+  jar.set(cookieName(SESSION.guestCookie), token, {
     httpOnly: true,
-    secure: isProd,
+    secure: isProd(),
     sameSite: "lax",
     path: "/",
     expires: expiresAt,
@@ -59,7 +70,7 @@ export interface StaffSession {
 
 export async function getStaffSession(): Promise<StaffSession | null> {
   const jar = await cookies();
-  const token = jar.get(SESSION.staffCookie)?.value;
+  const token = jar.get(cookieName(SESSION.staffCookie))?.value;
   if (!token) return null;
   const session = await prisma.session.findUnique({
     where: { token: hashToken(token) },
@@ -83,7 +94,7 @@ export async function getStaffSession(): Promise<StaffSession | null> {
 
 export async function getGuestSession(): Promise<{ scope: "guest"; phone: string } | null> {
   const jar = await cookies();
-  const token = jar.get(SESSION.guestCookie)?.value;
+  const token = jar.get(cookieName(SESSION.guestCookie))?.value;
   if (!token) return null;
   const session = await prisma.session.findUnique({ where: { token: hashToken(token) } });
   if (!session || session.scope !== "guest" || !session.guestPhone) return null;
@@ -93,12 +104,12 @@ export async function getGuestSession(): Promise<{ scope: "guest"; phone: string
 
 export async function destroySession(scope: "staff" | "guest") {
   const jar = await cookies();
-  const cookieName = scope === "staff" ? SESSION.staffCookie : SESSION.guestCookie;
-  const token = jar.get(cookieName)?.value;
+  const name = cookieName(scope === "staff" ? SESSION.staffCookie : SESSION.guestCookie);
+  const token = jar.get(name)?.value;
   if (token) {
     await prisma.session
       .update({ where: { token: hashToken(token) }, data: { revokedAt: new Date() } })
       .catch(() => {});
   }
-  jar.delete(cookieName);
+  jar.delete(name);
 }

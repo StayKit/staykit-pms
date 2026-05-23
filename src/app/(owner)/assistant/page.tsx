@@ -9,9 +9,12 @@ export const dynamic = "force-dynamic";
 export default async function McpPage() {
   const ctx = (await getAppContext())!;
 
-  const [client, token, recent] = await Promise.all([
-    prisma.mcpOAuthClient.findFirst({ where: { ownerId: ctx.ownerId } }),
-    prisma.mcpAccessToken.findFirst({ where: { userId: ctx.userId }, orderBy: { createdAt: "desc" } }),
+  const [token, recent] = await Promise.all([
+    prisma.mcpAccessToken.findFirst({
+      where: { userId: ctx.userId },
+      orderBy: { createdAt: "desc" },
+      include: { client: true },
+    }),
     prisma.mcpAuditEntry.findMany({ where: { userId: ctx.userId }, orderBy: { createdAt: "desc" }, take: 6 }),
   ]);
 
@@ -58,7 +61,7 @@ export default async function McpPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: "var(--surface-2)", borderRadius: 12 }}>
                   <div className="avatar purple" style={{ width: 32, height: 32, fontSize: 12 }}>C</div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 550, fontSize: 13.5 }}>{client?.clientName ?? "Claude"}</div>
+                    <div style={{ fontWeight: 550, fontSize: 13.5 }}>{token.client.clientName}</div>
                     <div className="text-xs text-muted">
                       Last used {token.lastUsedAt ? rel(token.lastUsedAt) : "—"} · {token.scopes.split(",").length} scopes
                     </div>

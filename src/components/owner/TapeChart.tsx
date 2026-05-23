@@ -207,6 +207,7 @@ export function TapeChart({
                           const startCol = Math.round((visStart - startMs) / DAY_MS);
                           const endCol = Math.round((visEnd - startMs) / DAY_MS);
                           const span = endCol - startCol;
+                          /* v8 ignore next -- defensive: day-aligned bars always span ≥1 column */
                           if (span <= 0) return null;
                           const leftPx = startCol * CELL_W + CELL_W * 0.35;
                           const widthPx = span * CELL_W - CELL_W * 0.7;

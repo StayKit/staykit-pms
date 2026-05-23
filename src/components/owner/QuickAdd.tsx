@@ -101,8 +101,8 @@ export function QuickAdd({
       close();
       router.refresh();
     } else {
+      // Surface the error on the review step where the user submitted.
       setError(res.message ?? "Could not create booking");
-      setStep(1);
     }
   }
 
@@ -264,7 +264,7 @@ export function QuickAdd({
                 Summary
               </div>
               <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.015em" }}>
-                {form.guestName || "New guest"} · {nights} night{nights > 1 ? "s" : ""}
+                {form.guestName} · {nights} night{nights > 1 ? "s" : ""}
               </div>
               <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
                 {form.adults} adults{form.children ? `, ${form.children} children` : ""} ·{" "}

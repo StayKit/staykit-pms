@@ -7,18 +7,22 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { APP } from "../../config";
 
-const MODE = (process.env.RAZORPAY_MODE || "test") as "test" | "live";
+// Read per call so an owner can flip RAZORPAY_MODE (Settings → Integrations after
+// KYC) without a restart, per the spec (B.7).
+function mode(): "test" | "live" {
+  return (process.env.RAZORPAY_MODE || "test") as "test" | "live";
+}
 
 function keyId() {
-  return MODE === "live" ? process.env.RAZORPAY_KEY_ID_LIVE : process.env.RAZORPAY_KEY_ID_TEST;
+  return mode() === "live" ? process.env.RAZORPAY_KEY_ID_LIVE : process.env.RAZORPAY_KEY_ID_TEST;
 }
 function keySecret() {
-  return MODE === "live"
+  return mode() === "live"
     ? process.env.RAZORPAY_KEY_SECRET_LIVE
     : process.env.RAZORPAY_KEY_SECRET_TEST;
 }
 export function webhookSecret() {
-  return MODE === "live"
+  return mode() === "live"
     ? process.env.RAZORPAY_WEBHOOK_SECRET_LIVE
     : process.env.RAZORPAY_WEBHOOK_SECRET_TEST;
 }

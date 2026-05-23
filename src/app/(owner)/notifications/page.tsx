@@ -4,7 +4,7 @@ import { Icon } from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
 
-const CHANNEL_TAG: Record<string, string> = { SMS: "", EMAIL: "direct", WHATSAPP: "whatsapp" };
+const CHANNEL_TAG: Record<"SMS" | "EMAIL" | "WHATSAPP", string> = { SMS: "", EMAIL: "direct", WHATSAPP: "whatsapp" };
 
 export default async function NotificationsPage() {
   const ctx = (await getAppContext())!;
@@ -15,7 +15,8 @@ export default async function NotificationsPage() {
   });
 
   // Group per logical trigger so each row shows all channels.
-  const byTrigger = new Map<string, { name: string; trigger: string; channels: string[] }>();
+  type Chan = "SMS" | "EMAIL" | "WHATSAPP";
+  const byTrigger = new Map<string, { name: string; trigger: string; channels: Chan[] }>();
   for (const t of templates) {
     const prev = byTrigger.get(t.triggerKey) ?? { name: t.name, trigger: t.triggerKey, channels: [] };
     prev.channels.push(t.channel);
@@ -67,7 +68,7 @@ export default async function NotificationsPage() {
                 <td>
                   <div style={{ display: "flex", gap: 6 }}>
                     {t.channels.map((c) => (
-                      <span key={c} className={"channel-chip " + (CHANNEL_TAG[c] ?? "")}>
+                      <span key={c} className={"channel-chip " + CHANNEL_TAG[c]}>
                         {c === "WHATSAPP" ? "WhatsApp" : c === "EMAIL" ? "Email" : "SMS"}
                       </span>
                     ))}

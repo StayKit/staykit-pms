@@ -32,7 +32,6 @@ export function OwnerShell({
       <Link key={n.href} href={n.href} className={"nav-item " + (active ? "active" : "")}>
         <Icon name={n.icon} className="icon" />
         <span>{n.label}</span>
-        {n.badge ? <span className="badge">{n.badge}</span> : null}
       </Link>
     );
   };

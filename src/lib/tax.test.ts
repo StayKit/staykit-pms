@@ -46,11 +46,33 @@ describe("computeTax", () => {
   });
 });
 
+describe("computeTax edge cases", () => {
+  it("multiplies by the unit count when several rooms share a rate", () => {
+    const r = computeTax([{ nightlyRatePaise: 6300_00, nights: 2, units: 2 }], true);
+    expect(r.subtotalPaise).toBe(6300_00 * 2 * 2);
+    expect(r.taxAmountPaise).toBe(Math.round(6300_00 * 2 * 2 * 0.05));
+  });
+
+  it("reports a zero effective rate for an empty quote", () => {
+    const r = computeTax([], true);
+    expect(r.subtotalPaise).toBe(0);
+    expect(r.taxAmountPaise).toBe(0);
+    expect(r.effectiveRate).toBe(0);
+  });
+});
+
 describe("splitInclusive", () => {
   it("backs out base and tax from a GST-inclusive total", () => {
     const { basePaise, taxPaise, rate } = splitInclusive(19845_00, 6300_00, true);
     expect(rate).toBe(0.05);
     expect(basePaise).toBe(18900_00);
     expect(taxPaise).toBe(945_00);
+  });
+
+  it("returns the whole amount as base when there is no GSTIN", () => {
+    const { basePaise, taxPaise, rate } = splitInclusive(19845_00, 6300_00, false);
+    expect(basePaise).toBe(19845_00);
+    expect(taxPaise).toBe(0);
+    expect(rate).toBe(0);
   });
 });

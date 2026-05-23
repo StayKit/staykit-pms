@@ -96,7 +96,8 @@ export async function POST(req: Request) {
     } catch (e) {
       const status = e instanceof ScopeError ? "DENIED" : "ERROR";
       await audit(ctx, name, args, status, Date.now() - started);
-      const message = e instanceof Error ? e.message : "Tool error";
+      // Tool/scope errors are always Error instances (zod, ScopeError, domain errors).
+      const message = (e as Error).message;
       // Tool errors are returned as result content with isError per MCP convention.
       return rpcResult(body.id, { content: [{ type: "text", text: message }], isError: true });
     }

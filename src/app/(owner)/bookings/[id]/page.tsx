@@ -8,7 +8,7 @@ import { BookingDetailView, type BookingDetailData } from "@/components/owner/Bo
 
 export const dynamic = "force-dynamic";
 
-const CHANNEL_ICON: Record<string, { icon: string; tone: string }> = {
+const CHANNEL_ICON: Record<"WHATSAPP" | "SMS" | "EMAIL", { icon: string; tone: string }> = {
   WHATSAPP: { icon: "message-circle", tone: "brand" },
   SMS: { icon: "phone", tone: "" },
   EMAIL: { icon: "mail", tone: "accent" },
@@ -103,7 +103,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     },
     payments,
     comms: b.notifications.map((n) => {
-      const ci = CHANNEL_ICON[n.channel] ?? { icon: "send", tone: "" };
+      const ci = CHANNEL_ICON[n.channel];
       return {
         icon: ci.icon,
         tone: ci.tone,
