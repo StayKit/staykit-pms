@@ -1,0 +1,167 @@
+// Shared icon set (inline SVG, Lucide-inspired but original strokes).
+// Use as <Icon name="calendar" className="icon" />.
+
+const ICONS = {
+  "home":        "M3 11l9-8 9 8M5 10v10h14V10",
+  "calendar":    "M8 3v4M16 3v4M3 9h18M5 6h14a2 2 0 012 2v11a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z",
+  "users":       "M16 21v-2a4 4 0 00-3-3.87M8 21v-2a4 4 0 014-4h0a4 4 0 014 4M12 11a4 4 0 100-8 4 4 0 000 8z M22 21v-2a4 4 0 00-3-3.87M19 11a4 4 0 100-8",
+  "book":        "M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5v14zM4 19.5A2.5 2.5 0 006.5 22H20",
+  "bar-chart":   "M3 21V9M9 21V3M15 21v-7M21 21V11",
+  "settings":    "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005.5 15a1.65 1.65 0 00-1.51-1H4a2 2 0 110-4h.09A1.65 1.65 0 005.5 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H10a1.65 1.65 0 001-1.51V4a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c0 .58.32 1.11.82 1.36",
+  "bell":        "M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9zM13.73 21a2 2 0 01-3.46 0",
+  "plus":        "M12 5v14M5 12h14",
+  "search":      "M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35",
+  "x":           "M18 6L6 18M6 6l12 12",
+  "check":       "M5 12l5 5L20 7",
+  "chevron-right":"M9 18l6-6-6-6",
+  "chevron-left": "M15 18l-9-6 9-6",
+  "chevron-down": "M6 9l6 6 6-6",
+  "arrow-right": "M5 12h14M13 5l7 7-7 7",
+  "arrow-up-right": "M7 17L17 7M7 7h10v10",
+  "filter":      "M22 3H2l8 9.46V19l4 2v-8.54L22 3z",
+  "credit-card": "M3 7h18v12H3zM3 11h18M7 15h2",
+  "indian-rupee":"M6 3h12M6 8h12M6 13l9 8M6 13c5 0 9-3 9-6",
+  "phone":       "M22 16.92v3a2 2 0 01-2.18 2 19.86 19.86 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.86 19.86 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.37 1.9.72 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0122 16.92z",
+  "mail":        "M4 4h16v16H4zM4 4l8 8 8-8",
+  "message-circle":"M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z",
+  "send":        "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
+  "user":        "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
+  "user-plus":   "M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM20 8v6M23 11h-6",
+  "log-in":      "M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3",
+  "log-out":     "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
+  "broom":       "M19 11l-7 7-7-7 7-7zM12 4l8 8M4 20l5-5",
+  "clock":       "M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3 2",
+  "key":         "M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4",
+  "more":        "M12 13a1 1 0 100-2 1 1 0 000 2zM12 6a1 1 0 100-2 1 1 0 000 2zM12 20a1 1 0 100-2 1 1 0 000 2z",
+  "edit":        "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z",
+  "trash":       "M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2",
+  "sparkles":    "M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3zM19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14zM5 14l.75 2.25L8 17l-2.25.75L5 20l-.75-2.25L2 17l2.25-.75L5 14z",
+  "shield":      "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+  "tag":         "M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.83zM7 7h.01",
+  "globe":       "M12 22a10 10 0 100-20 10 10 0 000 20zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z",
+  "map-pin":     "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1118 0zM12 13a3 3 0 100-6 3 3 0 000 6z",
+  "moon":        "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",
+  "alert":       "M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z",
+  "drag":        "M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01",
+  "external":    "M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3",
+  "wifi":        "M5 12.55a11 11 0 0114 0M2 8.36a16 16 0 0120 0M8.5 16.64a6 6 0 017 0M12 20h.01",
+  "image":       "M3 5h18v14H3zM3 17l6-6 4 4 3-3 5 5",
+  "menu":        "M3 6h18M3 12h18M3 18h18",
+  "list":        "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  "grid":        "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
+  "trending-up": "M23 6l-9.5 9.5-5-5L1 18M17 6h6v6",
+  "info":        "M12 21a9 9 0 100-18 9 9 0 000 18zM12 16v-4M12 8h.01",
+  "robot":       "M12 8V4H8M16 4h-4M4 12h16v8H4zM10 16h.01M14 16h.01M2 12h2M20 12h2",
+  "shield-check":"M9 12l2 2 4-4M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+  "lock":        "M5 11h14v10H5zM7 11V7a5 5 0 0110 0v4",
+};
+
+function Icon({ name, className = "icon", style }) {
+  const d = ICONS[name];
+  if (!d) return null;
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={style}
+      aria-hidden="true"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+// ── Status helpers ─────────────────────────────────────────────────────────
+function paymentState(b) {
+  if (!b) return "unknown";
+  if (b.status === "tentative") return "tentative";
+  if (b.status === "block") return "block";
+  if (b.status === "checkedin") return "checkedin";
+  if (b.status === "checkedout") return "checkedout";
+  if (b.paid >= b.total && b.total > 0) return "paid";
+  if (b.paid > 0) return "partial";
+  return "unpaid";
+}
+
+function statusLabel(s) {
+  return ({
+    tentative: "Tentative",
+    unpaid: "Unpaid",
+    partial: "Part-paid",
+    paid: "Paid",
+    checkedin: "Checked in",
+    checkedout: "Checked out",
+    block: "Owner block",
+    noshow: "No-show",
+  })[s] || s;
+}
+
+function statusPillClass(s) {
+  return "pill pill-" + s;
+}
+
+function bbClass(s) {
+  return "booking-bar bb-" + s;
+}
+
+function channelLabel(c) {
+  return ({
+    direct: "Direct",
+    walkin: "Walk-in",
+    phone: "Phone",
+    instagram: "Instagram",
+    whatsapp: "WhatsApp",
+    airbnb: "Airbnb",
+    booking: "Booking.com",
+    mmt: "MakeMyTrip",
+    block: "Block",
+  })[c] || c;
+}
+
+function channelInitial(c) {
+  return ({
+    direct: "D", walkin: "W", phone: "P", instagram: "I", whatsapp: "W",
+    airbnb: "A", booking: "B", mmt: "M",
+  })[c] || "•";
+}
+
+function GuestById(id) {
+  return GUESTS.find(g => g.id === id);
+}
+function RoomById(id) {
+  return ROOMS.find(r => r.id === id);
+}
+function RoomTypeById(id) {
+  return ROOM_TYPES.find(t => t.id === id);
+}
+
+// ── Pill component ───────────────────────────────────────────────────────────
+function StatusPill({ state, dot = true, children }) {
+  return (
+    <span className={"pill pill-" + state}>
+      {dot && <span className="swatch" />}
+      {children || statusLabel(state)}
+    </span>
+  );
+}
+
+function ChannelChip({ source, withLabel = true }) {
+  return (
+    <span className={"channel-chip " + source}>
+      {withLabel ? channelLabel(source) : channelInitial(source)}
+    </span>
+  );
+}
+
+Object.assign(window, {
+  Icon, ICONS,
+  paymentState, statusLabel, statusPillClass, bbClass,
+  channelLabel, channelInitial,
+  GuestById, RoomById, RoomTypeById,
+  StatusPill, ChannelChip,
+});

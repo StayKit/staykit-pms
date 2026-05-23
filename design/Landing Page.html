@@ -1,0 +1,1103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StayKit — Run your homestay, not a spreadsheet.</title>
+  <meta name="description" content="StayKit is the open-source homestay manager built for India. Manage bookings, send payment links, file GST — and let Claude do most of it for you." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="landing.css" />
+</head>
+<body>
+
+<!-- ───────── NAV ───────── -->
+<nav class="nav" id="nav" data-screen-label="Nav">
+  <div class="container nav-inner">
+    <a href="#top" class="brand">
+      <span class="mark">S</span>
+      <span>StayKit</span>
+      <span class="tag">homestays · india</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#ai">AI</a>
+      <a href="#india">India</a>
+      <a href="#compare">Compare</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#oss">Open source</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="nav-cta">
+      <a href="index.html" class="btn btn-ghost btn-sm">Sign in</a>
+      <a href="#pricing" class="btn btn-primary btn-sm">Start free trial</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ───────── HERO ───────── -->
+<section class="hero" id="top" data-screen-label="01 Hero">
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow"><span class="dot"></span>New · AI-native homestay manager</span>
+      <h1>
+        Run your homestay,<br/>
+        not a <span class="accent">spreadsheet.</span>
+      </h1>
+      <p class="lede">
+        StayKit is the open-source booking system built for Indian homestay owners. Manage bookings, send payment links, file GST &mdash; and let <strong style="color:var(--ink)">Claude do most of it for you.</strong>
+      </p>
+      <div class="hero-ctas">
+        <a href="#pricing" class="btn btn-accent btn-lg">
+          Try Cloud — ₹149/mo
+          <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+        </a>
+        <a href="#oss" class="btn btn-lg">
+          Self-host in 5 minutes
+        </a>
+      </div>
+      <a href="#demo" class="text-link" style="margin-top:18px; display:inline-flex;">See it in action ↓</a>
+
+      <div class="hero-trust">
+        <span class="item">🇮🇳 <span class="em">Made in India</span></span>
+        <span class="item">⚡ <span class="em">5-min setup</span></span>
+        <span class="item">🔓 <span class="em">AGPL open source</span></span>
+        <span class="item">🤖 <span class="em">MCP / Claude-native</span></span>
+      </div>
+    </div>
+
+    <!-- Hero animated stage -->
+    <div class="hero-stage" aria-hidden="true">
+      <div class="stage-top">
+        <span class="dot a"></span>
+        <span class="dot b"></span>
+        <span class="dot c"></span>
+        <span class="title">Riverbend Cottages · June 12 — June 18</span>
+        <span class="badge">LIVE</span>
+      </div>
+
+      <div class="mini-tape">
+        <div class="mini-days">
+          <div></div>
+          <div class="head">Wed<span class="dnum">11</span></div>
+          <div class="head today">Thu<span class="dnum">12</span></div>
+          <div class="head">Fri<span class="dnum">13</span></div>
+          <div class="head">Sat<span class="dnum">14</span></div>
+          <div class="head">Sun<span class="dnum">15</span></div>
+          <div class="head">Mon<span class="dnum">16</span></div>
+          <div class="head">Tue<span class="dnum">17</span></div>
+        </div>
+
+        <div class="mini-row">
+          <div class="room-label"><span class="swatch"></span>Cottage 1</div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell wkn"></div><div class="cell wkn"></div>
+          <div class="cell"></div><div class="cell"></div>
+          <div class="booking bb-green" style="left: calc(84px / (84px + 7 * 100%) * 100% + 6px); display:none;"></div>
+          <!-- positioned by inline style below -->
+          <div class="booking bb-green" style="left: calc(84px + 6px); width: calc((100% - 84px) / 7 * 1.95); top: 38px;">
+            Amit P. <span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">2N</span>
+          </div>
+        </div>
+
+        <div class="mini-row">
+          <div class="room-label"><span class="swatch" style="background:var(--accent-soft);"></span>Cottage 2</div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell wkn"></div><div class="cell wkn"></div>
+          <div class="cell"></div><div class="cell"></div>
+          <div class="booking bb-teal" style="left: calc(84px + 6px + (100% - 84px) / 7 * 0.4); width: calc((100% - 84px) / 7 * 2.55); top: 38px;">
+            Priya R. <span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">3N</span>
+          </div>
+        </div>
+
+        <div class="mini-row" id="hero-anim-row">
+          <div class="room-label"><span class="swatch" style="background:#FBE6DF;"></span>Cottage 3</div>
+          <div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell wkn"></div><div class="cell wkn"></div>
+          <div class="cell"></div><div class="cell"></div>
+          <!-- the animated booking bar -->
+          <div class="booking bb-coral animate" id="hero-bar"
+               style="left: calc(84px + 6px + (100% - 84px) / 7 * 1); width: calc((100% - 84px) / 7 * 2); top: 38px; position: absolute;">
+            <span class="bb-tick">●</span>
+            Sameer K. · 12–14
+            <span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">2N</span>
+          </div>
+        </div>
+
+        <div class="mini-row">
+          <div class="room-label"><span class="swatch" style="background:var(--cream-2);"></span>Suite 1</div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell wkn"></div><div class="cell wkn"></div>
+          <div class="cell"></div><div class="cell"></div>
+          <div class="booking bb-amber" style="left: calc(84px + 6px + (100% - 84px) / 7 * 3); width: calc((100% - 84px) / 7 * 1.85); top: 38px;">
+            Walk-in <span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">hold</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status flip pill, anchored to the animated bar -->
+      <div style="position:absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events:none;">
+        <div style="position:relative; width: 80px; height: 22px;">
+          <span class="status-flip unpaid" style="left:0; top:0;"><span class="swatch"></span>Unpaid</span>
+          <span class="status-flip paid"   style="left:0; top:0;"><span class="swatch"></span>Paid</span>
+        </div>
+      </div>
+
+      <!-- Claude bubble overlay -->
+      <div class="hero-overlay claude-bubble">
+        <div class="head">
+          <span class="avatar">C</span>
+          <span>Claude</span>
+          <span class="tag">via MCP</span>
+        </div>
+        <div class="quote">
+          “Send Sameer his <em>payment link</em> and check-in instructions.”
+        </div>
+      </div>
+
+      <!-- WhatsApp message overlay -->
+      <div class="hero-overlay wa-card">
+        <div class="head">
+          <span class="dot">W</span>
+          <span>WhatsApp · to Sameer K.</span>
+        </div>
+        <div class="msg">Hi Sameer! Welcome to Riverbend Cottages. Your stay is confirmed for June 12–14.</div>
+        <div class="link">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-6 0v4"/><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/></svg>
+          Pay <span class="money">₹4,500</span> via Razorpay
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 3-SECOND PROOF ───────── -->
+<section class="proof" id="demo" data-screen-label="02 Proof">
+  <div class="container">
+    <div class="proof-caption">
+      <div class="eyebrow dim"><span class="dot"></span>The 3-second proof</div>
+      <h2 class="h3" style="margin-top: 14px;">One screen. Every booking. Every property.</h2>
+      <p class="sub"><em>No tabs. No tickets. No dashboards within dashboards.</em></p>
+    </div>
+
+    <div class="tape-mock">
+      <div class="tape-toolbar">
+        <div class="toolbar-title">Calendar <span class="sub">· June 2026 · 8 rooms</span></div>
+        <div class="seg">
+          <button>Day</button>
+          <button class="active">Week</button>
+          <button>Month</button>
+        </div>
+        <div class="toolbar-right">
+          <span class="eyebrow dim" style="font-size:10.5px;">82% occupancy</span>
+          <a class="btn btn-sm" href="#">+ Booking</a>
+        </div>
+      </div>
+
+      <div class="tape-grid-mock">
+        <div class="corner">Room</div>
+        <div class="col-head">Mon<span class="dnum">8</span></div>
+        <div class="col-head">Tue<span class="dnum">9</span></div>
+        <div class="col-head">Wed<span class="dnum">10</span></div>
+        <div class="col-head">Thu<span class="dnum">11</span></div>
+        <div class="col-head today">Fri<span class="dnum">12</span></div>
+        <div class="col-head wkn">Sat<span class="dnum">13</span></div>
+        <div class="col-head wkn">Sun<span class="dnum">14</span></div>
+        <div class="col-head">Mon<span class="dnum">15</span></div>
+        <div class="col-head">Tue<span class="dnum">16</span></div>
+        <div class="col-head">Wed<span class="dnum">17</span></div>
+
+        <!-- rows + booking bars -->
+        <div class="row">
+          <div class="room"><span class="num">101</span><span class="type">Cottage</span><span class="clean"></span></div>
+          <div class="cell"></div>
+          <div class="cell"><div class="bar" style="left:50%; right:-205%; background:linear-gradient(180deg,#4D6E96,#3D5A80);"><span class="badge">✓</span>Sameer K. · 2A<span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">₹4,500</span></div></div>
+          <div class="cell"></div><div class="cell"></div>
+          <div class="cell today-col"></div>
+          <div class="cell wkn"></div>
+          <div class="cell wkn"><div class="bar" style="left:50%; right:-205%; background:linear-gradient(180deg,#6BA288,#4F8F73);"><span class="badge">✓</span>Mehta family · 4A<span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">₹13,200</span></div></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        </div>
+
+        <div class="row">
+          <div class="room"><span class="num">102</span><span class="type">Cottage</span><span class="clean dirty"></span></div>
+          <div class="cell"><div class="bar" style="left:30%; right:-310%; background:linear-gradient(180deg,#E4B768,#D8A33D); color:#3D2B05;"><span class="badge" style="background:rgba(0,0,0,.12)">⏳</span>Rohit M. (Tentative)<span style="margin-left:auto; opacity:.7; font-weight:500; font-size:11px;">hold to 5pm</span></div></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell today-col"></div>
+          <div class="cell wkn"></div><div class="cell wkn"></div>
+          <div class="cell"><div class="bar" style="left:30%; right:-110%; background:linear-gradient(180deg,#D86A52,#C8553D);"><span class="badge">!</span>Anita J. · 2A<span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">unpaid</span></div></div>
+          <div class="cell"></div><div class="cell"></div>
+        </div>
+
+        <div class="row">
+          <div class="room"><span class="num">103</span><span class="type">Cottage</span><span class="clean"></span></div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+          <div class="cell"><div class="bar" style="left:50%; right:-410%; background:repeating-linear-gradient(135deg,#C9C6D2 0 6px,#B7B3C2 6px 12px); color:#3F3A4F; box-shadow:none;">Maintenance · paint</div></div>
+          <div class="cell"></div><div class="cell"></div>
+          <div class="cell today-col"></div>
+          <div class="cell wkn"></div><div class="cell wkn"></div>
+          <div class="cell"><div class="bar" style="left:30%; right:-110%; background:linear-gradient(180deg,#6BA288,#4F8F73);"><span class="badge">✓</span>K. Iyer · 2A<span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">₹7,800</span></div></div>
+          <div class="cell"></div>
+        </div>
+
+        <div class="row">
+          <div class="room"><span class="num">201</span><span class="type">Suite</span><span class="clean"></span></div>
+          <div class="cell"><div class="bar" style="left:30%; right:-510%; background:linear-gradient(180deg,#4D6E96,#3D5A80);"><span class="badge">✓</span>Banerjee · 4A · 2C<span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">₹22,400</span></div></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell today-col"></div>
+          <div class="cell wkn"></div><div class="cell wkn"></div>
+          <div class="cell"></div>
+          <div class="cell"><div class="bar" style="left:30%; right:-110%; background:linear-gradient(180deg,#8A7BB4,#6B5D8A);"><span class="badge">★</span>Owner block<span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">family</span></div></div>
+        </div>
+
+        <div class="row">
+          <div class="room"><span class="num">202</span><span class="type">Suite</span><span class="clean"></span></div>
+          <div class="cell"></div><div class="cell"></div>
+          <div class="cell"><div class="bar" style="left:50%; right:-205%; background:linear-gradient(180deg,#E4B768,#D8A33D); color:#3D2B05;"><span class="badge" style="background:rgba(0,0,0,.12)">½</span>S. Reddy<span style="margin-left:auto; opacity:.75; font-weight:500; font-size:11px;">50% paid</span></div></div>
+          <div class="cell"></div>
+          <div class="cell today-col"></div>
+          <div class="cell wkn"></div>
+          <div class="cell wkn"><div class="bar" style="left:50%; right:-310%; background:linear-gradient(180deg,#4D6E96,#3D5A80);"><span class="badge">✓</span>Khanna · 2A<span style="margin-left:auto; opacity:.85; font-weight:500; font-size:11px;">₹16,200</span></div></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── PROBLEM ───────── -->
+<section class="section" data-screen-label="03 Problem">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow warm"><span class="dot"></span>If this sounds familiar…</div>
+      <h2 class="h2" style="margin-top: 14px;">Running a homestay shouldn't feel like running 4 jobs.</h2>
+    </div>
+
+    <div class="problem-grid">
+      <article class="problem-card">
+        <div class="icon-wrap">💬</div>
+        <p class="quote">Wait, did Mr. Sharma book the 12th or the 13th?</p>
+        <p class="imp">You're searching three different WhatsApp chats to confirm one booking.</p>
+      </article>
+      <article class="problem-card">
+        <div class="icon-wrap">📞</div>
+        <p class="quote">Sorry sir, that room is actually taken.</p>
+        <p class="imp">The most expensive sentence in hospitality.</p>
+      </article>
+      <article class="problem-card">
+        <div class="icon-wrap">🧾</div>
+        <p class="quote">My CA needs all March invoices by Tuesday.</p>
+        <p class="imp">You're at the property. The register is at home.</p>
+      </article>
+    </div>
+
+    <p class="problem-closer">
+      Most homestay software was built for hotel chains.
+      <span class="em">StayKit was built for you.</span>
+    </p>
+  </div>
+</section>
+
+<!-- ───────── SOLUTION ───────── -->
+<section class="section bg-cream" data-screen-label="04 Solution">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow"><span class="dot"></span>The 90-second walkthrough</div>
+      <h2 class="h2" style="margin-top: 14px;">Four things StayKit does, before anything else.</h2>
+    </div>
+
+    <div class="steps-grid">
+      <!-- Step 1 -->
+      <article class="step-card">
+        <div class="step-visual">
+          <div class="step-vis-tape">
+            <div></div>
+            <div class="h">Mo</div><div class="h">Tu</div><div class="h">We</div><div class="h">Th</div><div class="h">Fr</div><div class="h">Sa</div>
+            <div class="lbl">101</div>
+            <div class="c"></div><div class="b" style="grid-column: span 2;">Sameer · 2N</div><div class="c"></div><div class="c"></div><div class="c"></div>
+            <div class="lbl">102</div>
+            <div class="c"></div><div class="c"></div><div class="b green" style="grid-column: span 3;">Mehta family · 3N</div><div class="c"></div>
+            <div class="lbl">103</div>
+            <div class="b amber" style="grid-column: span 2;">Tentative</div><div class="c"></div><div class="c"></div><div class="b coral" style="grid-column: span 2;">Anita · unpaid</div>
+          </div>
+        </div>
+        <div class="step-body">
+          <span class="step-num">1</span>
+          <h3>See everything at once.</h3>
+          <p class="desc">A clean tape chart that shows all your rooms and bookings in one calendar view. Drag to extend a stay. Click an empty cell to book.</p>
+        </div>
+      </article>
+
+      <!-- Step 2 -->
+      <article class="step-card">
+        <div class="step-visual">
+          <div class="step-vis-pay">
+            <div class="pay-phone">
+              <div class="head"><span class="dot">W</span> WhatsApp · to Anita J.</div>
+              <div class="bubble">Hi Anita! Pay ₹2,200 for your stay at Riverbend (June 14–15). Tap to pay 👇</div>
+              <div class="link">
+                💳 Pay ₹2,200 via Razorpay
+              </div>
+              <div class="paid-badge">● Paid · 2 mins ago</div>
+            </div>
+          </div>
+        </div>
+        <div class="step-body">
+          <span class="step-num">2</span>
+          <h3>Get paid without chasing.</h3>
+          <p class="desc">One tap creates a Razorpay payment link and WhatsApps it to your guest. When they pay, the booking turns green automatically.</p>
+        </div>
+      </article>
+
+      <!-- Step 3 -->
+      <article class="step-card">
+        <div class="step-visual">
+          <div class="step-vis-msg">
+            <div class="msg-line"><span class="when">T-7 days</span><span class="pill">WhatsApp</span><span class="body">Confirmation + directions</span><span class="check">✓</span></div>
+            <div class="msg-line"><span class="when">T-1 day</span><span class="pill sms">SMS · DLT</span><span class="body">Reminder, Hindi</span><span class="check">✓</span></div>
+            <div class="msg-line"><span class="when">Check-in</span><span class="pill">WhatsApp</span><span class="body">Wifi + house rules</span><span class="check">✓</span></div>
+            <div class="msg-line"><span class="when">T+1 day</span><span class="pill email">Email</span><span class="body">Thank-you + review link</span><span class="check">✓</span></div>
+          </div>
+        </div>
+        <div class="step-body">
+          <span class="step-num">3</span>
+          <h3>Send the right message at the right time.</h3>
+          <p class="desc">Confirmation. Day-before reminder. Check-in instructions. Thank-you note. Configure once, send forever — in Hindi or English.</p>
+        </div>
+      </article>
+
+      <!-- Step 4 -->
+      <article class="step-card">
+        <div class="step-visual">
+          <div class="step-vis-claude">
+            <div class="cmsg user">Show me this weekend's arrivals and remind the unpaid ones.</div>
+            <div class="cmsg">
+              <div class="row" style="margin-bottom:4px;"><span class="check">✓</span> Done. 5 arrivals this weekend.</div>
+              <div style="color:var(--muted); font-size:11px;">Reminded 2 unpaid (Anita, Rohit) via WhatsApp + SMS.</div>
+            </div>
+          </div>
+        </div>
+        <div class="step-body">
+          <span class="step-num">4</span>
+          <h3>Ask Claude to do the rest.</h3>
+          <p class="desc">“Show me this weekend's arrivals and remind the unpaid ones.” Done — in plain English, in your AI of choice.</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── AI MOAT ───────── -->
+<section class="ai-section" id="ai" data-screen-label="05 AI Moat">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow warm"><span class="dot"></span>The wedge</div>
+      <h2 class="h2" style="margin-top: 14px;">The first homestay manager built <em style="font-style: italic; color: var(--accent); font-weight: 500;">for AI.</em></h2>
+      <p class="lede">
+        StayKit plugs directly into Claude, ChatGPT, and any MCP-compatible assistant. Your AI doesn't just chat &mdash; it takes action, with your permission.
+      </p>
+    </div>
+
+    <div class="laptop-mockup">
+      <div class="laptop-screen">
+        <div class="laptop-bar">
+          <span class="dot a"></span><span class="dot b"></span><span class="dot c"></span>
+          <span class="url">claude.ai/chat/staykit-riverbend</span>
+        </div>
+
+        <div class="claude-app">
+          <aside class="claude-side">
+            <a href="#" class="brand">
+              <span class="mark">C</span>
+              <span>Claude</span>
+            </a>
+            <div class="sect">Conversations</div>
+            <div class="item active">💬 Today's arrivals</div>
+            <div class="item">Weekly summary</div>
+            <div class="item">June revenue review</div>
+            <div class="item">Refund for Mr. Verma</div>
+            <div class="sect">Connectors</div>
+            <div class="claude-mcp">
+              <div class="lbl"><span class="pulse"></span>MCP connected</div>
+              <div class="name">StayKit · Riverbend</div>
+              <div class="desc">12 tools · scopes: read, payments, messaging</div>
+            </div>
+          </aside>
+
+          <main class="claude-main">
+            <div class="claude-msg user">
+              Anyone arriving today who hasn't paid yet?
+            </div>
+
+            <div class="claude-msg bot">
+              <div class="head">
+                <span class="a">C</span>
+                <span>Claude</span>
+                <span class="badge">staykit.list_arrivals</span>
+              </div>
+              <div>Two arrivals today have outstanding balances:</div>
+              <ul>
+                <li><span><span class="name">Rohit Mehta</span> · Cottage 2</span><span class="due">₹4,500 due</span></li>
+                <li><span><span class="name">Anita Joshi</span> · Suite 1</span><span class="due">₹2,200 due</span></li>
+              </ul>
+              <div class="ask">Should I send them both payment links?</div>
+            </div>
+
+            <div class="claude-msg user">
+              Yes, and remind them about check-in time.
+            </div>
+
+            <div class="claude-msg bot">
+              <div class="head">
+                <span class="a">C</span>
+                <span>Claude</span>
+                <span class="badge">staykit.send_payment_link · staykit.notify</span>
+              </div>
+              <div>Done. SMS + WhatsApp sent to both. They have until 2 PM check-in. I'll notify you when they pay.</div>
+              <div class="tool">● 4 actions logged · audit trail saved</div>
+            </div>
+
+            <div class="claude-input">
+              <span style="flex:1;">Reply to Claude…</span>
+              <span class="send">↑</span>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div class="laptop-base"></div>
+    </div>
+
+    <div class="ai-pills">
+      <div class="ai-pill">
+        <h4><span class="em">🔐</span>You stay in control</h4>
+        <p>Every AI action is logged, reversible, and scope-limited. Revoke access in one click.</p>
+      </div>
+      <div class="ai-pill">
+        <h4><span class="em">🎯</span>Built on the open MCP standard</h4>
+        <p>Works with Claude today &mdash; soon with every major AI assistant. Not a closed chatbot.</p>
+      </div>
+      <div class="ai-pill">
+        <h4><span class="em">🛡️</span>Your AI can't touch what you don't permit</h4>
+        <p>Separate scopes for reading, writing, refunding, and sending messages. Destructive actions need explicit consent.</p>
+      </div>
+    </div>
+
+    <p class="mcp-footer">
+      Built on the <a href="https://modelcontextprotocol.io">Model Context Protocol</a> &mdash; the open standard donated by Anthropic to the Linux Foundation.
+    </p>
+  </div>
+</section>
+
+<!-- ───────── INDIA ───────── -->
+<section class="section" id="india" data-screen-label="06 India">
+  <div class="container india-head">
+    <div class="head-flex">
+      <div style="max-width: 600px;">
+        <div class="eyebrow"><span class="dot"></span>Made here, made for here</div>
+        <h2 class="h2" style="margin-top: 14px;">Not “available in India.”<br/><em style="font-style: normal; color: var(--brand);">Built in India, for India.</em></h2>
+      </div>
+      <p class="lede" style="max-width: 380px;">
+        GST, Form C, Razorpay, DLT, Hindi &mdash; out of the box. No plugins, no “international version,” no workarounds.
+      </p>
+    </div>
+
+    <div class="india-grid">
+      <article class="india-card">
+        <div class="icon">🧾</div>
+        <h3>GST 5% / 18% done right</h3>
+        <p>Auto-applies the correct slab based on Sept 2025 rules. SAC 996311 default. CGST/SGST/IGST split by guest state.</p>
+        <span class="sample">CGST 9% · SGST 9% · ₹2,160</span>
+      </article>
+      <article class="india-card warm">
+        <div class="icon">📋</div>
+        <h3>Form C reminders</h3>
+        <p>Foreign guest? We remind you to file with FRRO within 24 hours &mdash; with the data pre-filled.</p>
+        <span class="sample">FRRO · Form C · DE-passport · due 6h</span>
+      </article>
+      <article class="india-card">
+        <div class="icon">💳</div>
+        <h3>Razorpay-native</h3>
+        <p>Payment links, UPI, instant refunds. Not “supports international payments via Stripe.”</p>
+        <span class="sample">razorpay.com/l/staykit-r3k7z</span>
+      </article>
+      <article class="india-card warm">
+        <div class="icon">📱</div>
+        <h3>DLT-compliant SMS</h3>
+        <p>MSG91, Gupshup, or any DLT-approved provider. We handle template registration and entity formatting.</p>
+        <span class="sample">DLT-PE: 1701234567890 · MSG91</span>
+      </article>
+      <article class="india-card">
+        <div class="icon">₹</div>
+        <h3>₹ Indian formatting</h3>
+        <p>₹1,23,456 &mdash; not $1,234.56. Dates in DD/MM. IST by default. Lakh-crore arithmetic throughout.</p>
+        <span class="sample">₹1,23,456.00 · 23/06/2026 · IST</span>
+      </article>
+      <article class="india-card warm">
+        <div class="icon">🗣️</div>
+        <h3>हिन्दी interface</h3>
+        <p>Beta in v1. Kannada, Malayalam, Marathi, Tamil rolling out through 2026.</p>
+        <span class="sample hindi">आज की बुकिंग · 4 आगमन</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── FEATURES ───────── -->
+<section class="section bg-cream" id="features" data-screen-label="07 Features">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow dim"><span class="dot"></span>The toolkit</div>
+      <h2 class="h2" style="margin-top: 14px;">Everything you need. Nothing you don't.</h2>
+      <p class="lede">Twelve features that cover 95% of what a homestay owner does in a day.</p>
+    </div>
+
+    <div class="feature-grid">
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <h4>Tape chart calendar</h4>
+        <p>Drag, drop, extend, move. The standard view, modernized.</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg></div>
+        <h4>Quick-add booking</h4>
+        <p>30 seconds from “phone rang” to “booking saved.”</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg></div>
+        <h4>Razorpay payment links</h4>
+        <p>Auto-generated, auto-sent, auto-reconciled.</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></div>
+        <h4>Refunds in 2 clicks</h4>
+        <p>Cancellation policy auto-calculates the refundable amount.</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg></div>
+        <h4>Guest portal (OTP)</h4>
+        <p>Guests log in with their mobile number. No passwords. No accounts.</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 17 4-6 4 2 6-8"/></svg></div>
+        <h4>Rate plans</h4>
+        <p>Weekend, festival, monsoon, peak. Day-of-week and min-stay rules.</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.5a4 4 0 1 1-4-4H20"/></svg></div>
+        <h4>Maintenance blocks</h4>
+        <p>Renovating Cottage 3? Block it. The calendar respects it.</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
+        <h4>Multi-property</h4>
+        <p>One owner, many properties. Each manager sees only theirs.</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11h-6M19 8v6"/></svg></div>
+        <h4>Role-based access</h4>
+        <p>Owner, manager, front-desk. No more “everyone is admin.”</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+        <h4>Notifications, your way</h4>
+        <p>Email, SMS, WhatsApp. Trigger any template at any moment.</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
+        <h4>GST-ready reports</h4>
+        <p>Hand them to your CA. Monthly, quarterly, custom.</p>
+      </article>
+      <article class="feat-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <h4>Audit log</h4>
+        <p>Who did what, when. Including what the AI did.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── COMPARISON ───────── -->
+<section class="section" id="compare" data-screen-label="08 Comparison">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow"><span class="dot"></span>Honest comparison</div>
+      <h2 class="h2" style="margin-top: 14px;">How StayKit stacks up.</h2>
+      <p class="lede" style="font-style: italic; color: var(--muted);">We list where competitors win, too.</p>
+    </div>
+
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th class="label-col"></th>
+            <th class="us">
+              <span class="tagline">Us</span>
+              StayKit
+            </th>
+            <th><span class="competitor">Djubo</span><span class="small">India · PMS</span></th>
+            <th><span class="competitor">Qloapps</span><span class="small">OSS · generic</span></th>
+            <th><span class="competitor">Hostaway</span><span class="small">US · vacation rentals</span></th>
+            <th><span class="competitor">WhatsApp + Sheets</span><span class="small">DIY</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="label">Starting price (India)</td>
+            <td class="us"><span class="cmp-em">₹149/mo</span></td>
+            <td>~₹5,000/mo</td>
+            <td>Free</td>
+            <td>~$45/mo<br/><span style="color:var(--muted); font-size:11.5px;">(₹3,800)</span></td>
+            <td>Free</td>
+          </tr>
+          <tr>
+            <td class="label">Open source</td>
+            <td class="us"><span class="cmp-yes"> AGPL</span></td>
+            <td><span class="cmp-no"></span></td>
+            <td><span class="cmp-yes"></span></td>
+            <td><span class="cmp-no"></span></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td class="label">Self-hostable</td>
+            <td class="us"><span class="cmp-yes"></span></td>
+            <td><span class="cmp-no"></span></td>
+            <td><span class="cmp-yes"></span></td>
+            <td><span class="cmp-no"></span></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td class="label">AI assistant (MCP)</td>
+            <td class="us"><span class="cmp-yes"> Native</span></td>
+            <td><span class="cmp-no"><span class="qual">Chatbot only</span></span></td>
+            <td><span class="cmp-no"></span></td>
+            <td><span class="cmp-no"><span class="qual">Chatbot only</span></span></td>
+            <td><span class="cmp-no"></span></td>
+          </tr>
+          <tr>
+            <td class="label">Modern UI</td>
+            <td class="us"><span class="cmp-yes"></span></td>
+            <td><span class="cmp-yes"></span></td>
+            <td><span class="cmp-no"></span></td>
+            <td><span class="cmp-yes"></span></td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td class="label">India-tuned (GST, Form C, DLT)</td>
+            <td class="us"><span class="cmp-yes"> Native</span></td>
+            <td><span class="cmp-yes"></span></td>
+            <td><span class="cmp-no"><span class="qual">Generic</span></span></td>
+            <td><span class="cmp-no"><span class="qual">Generic</span></span></td>
+            <td><span class="cmp-no"><span class="qual">Manual</span></span></td>
+          </tr>
+          <tr>
+            <td class="label">Razorpay-native</td>
+            <td class="us"><span class="cmp-yes"></span></td>
+            <td><span class="cmp-yes"></span></td>
+            <td><span class="cmp-warn"><span class="qual">Plugin</span></span></td>
+            <td><span class="cmp-warn"></span></td>
+            <td><span class="cmp-warn"><span class="qual">Manual</span></span></td>
+          </tr>
+          <tr>
+            <td class="label">Channel manager (OTA sync)</td>
+            <td class="us"><span class="cmp-no" style="color:var(--muted);"><span class="qual" style="font-style:italic;">by design</span></span></td>
+            <td><span class="cmp-yes"></span></td>
+            <td><span class="cmp-warn"><span class="qual">Plugin</span></span></td>
+            <td><span class="cmp-yes"></span></td>
+            <td><span class="cmp-no"></span></td>
+          </tr>
+          <tr>
+            <td class="label">Hindi interface</td>
+            <td class="us"><span class="cmp-yes"> Beta</span></td>
+            <td><span class="cmp-warn"></span></td>
+            <td><span class="cmp-no"></span></td>
+            <td><span class="cmp-no"></span></td>
+            <td><span class="cmp-yes"></span></td>
+          </tr>
+          <tr>
+            <td class="label">Setup time</td>
+            <td class="us"><span class="cmp-em">5 min</span></td>
+            <td>1–3 weeks</td>
+            <td>Days</td>
+            <td>1 week</td>
+            <td>0 min</td>
+          </tr>
+          <tr>
+            <td class="label">For non-tech owners</td>
+            <td class="us"><span class="cmp-yes"></span></td>
+            <td><span class="cmp-warn"><span class="qual">Steep</span></span></td>
+            <td><span class="cmp-no"><span class="qual">Cluttered</span></span></td>
+            <td><span class="cmp-warn"><span class="qual">Complex</span></span></td>
+            <td><span class="cmp-yes"></span></td>
+          </tr>
+          <tr>
+            <td class="label">Your data stays yours</td>
+            <td class="us"><span class="cmp-yes"> Self-host or India hosting</span></td>
+            <td><span class="cmp-warn"></span></td>
+            <td><span class="cmp-yes"></span></td>
+            <td><span class="cmp-warn"></span></td>
+            <td><span class="cmp-yes"></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="compare-caption">
+      <strong>Where competitors win:</strong> Djubo and Hostaway have channel managers that auto-sync your inventory to Airbnb, Booking.com, and MakeMyTrip. If 50%+ of your bookings come through OTAs, they're the better choice. <strong>StayKit is built for owners who take bookings directly</strong> &mdash; through phone, WhatsApp, Instagram, or repeat guests.
+    </div>
+  </div>
+</section>
+
+<!-- ───────── OPEN SOURCE ───────── -->
+<section class="section bg-cream" id="oss" data-screen-label="09 Open Source">
+  <div class="container oss-grid">
+    <div>
+      <div class="eyebrow"><span class="dot"></span>For the technical owner</div>
+      <h2 class="h2" style="margin-top: 14px;">Or run it yourself.<br/>We don't mind.</h2>
+      <p class="lede" style="margin-top: 18px;">
+        StayKit is fully open source under AGPL-3.0. Self-host it on your own server, on a ₹400/month VPS, on your home Mac mini &mdash; we don't care, and we don't charge.
+      </p>
+
+      <ul class="oss-list">
+        <li><span class="check">✓</span><span><strong style="color:var(--ink); font-weight:600;">All features included</strong> &mdash; no “Pro” lockout</span></li>
+        <li><span class="check">✓</span><span><strong style="color:var(--ink); font-weight:600;">Your data on your hardware</strong></span></li>
+        <li><span class="check">✓</span><span><strong style="color:var(--ink); font-weight:600;">MIT-compatible API</strong> for integrations</span></li>
+        <li><span class="check">✓</span><span>Docker image, <strong style="color:var(--ink); font-weight:600;">Coolify recipe</strong>, Fly.io template</span></li>
+        <li><span class="check">✓</span><span>Active community on <strong style="color:var(--ink); font-weight:600;">Discord &amp; GitHub</strong></span></li>
+      </ul>
+
+      <p class="oss-foot">
+        We make money only when you choose our hosting. That's the deal.
+      </p>
+
+      <div class="oss-ctas">
+        <a href="https://github.com/staykit/staykit" class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.1 3.29 9.42 7.86 10.96.58.11.79-.25.79-.55 0-.27-.01-1.16-.01-2.1-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.74.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.08-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.17 1.18.92-.26 1.91-.39 2.89-.39.98 0 1.97.13 2.89.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.77.11 3.06.74.8 1.19 1.82 1.19 3.08 0 4.42-2.69 5.4-5.25 5.69.41.36.78 1.06.78 2.14 0 1.55-.02 2.79-.02 3.17 0 .31.21.67.8.55C20.21 21.42 23.5 17.1 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+          GitHub →
+        </a>
+        <a href="#" class="btn">Self-hosting Guide →</a>
+        <a href="#" class="btn">Join Discord →</a>
+      </div>
+    </div>
+
+    <div class="terminal">
+      <div class="term-bar">
+        <span class="dot a"></span><span class="dot b"></span><span class="dot c"></span>
+        <span class="name">staykit-self-host · zsh</span>
+      </div>
+      <pre class="term-body" style="margin:0; white-space:pre; font-family:inherit;"><span class="prompt">$</span> <span class="cmd">git clone https://github.com/staykit/staykit</span>
+<span class="info">Cloning into 'staykit'... </span><span class="ok" style="display:inline;">done</span>
+
+<span class="prompt">$</span> <span class="cmd">cd staykit &amp;&amp; cp .env.example .env</span>
+
+<span class="prompt">$</span> <span class="cmd">docker compose up -d</span>
+<span class="ok">Database ready</span>
+<span class="ok">Litestream backup configured (S3 / Backblaze B2)</span>
+<span class="ok">Migrations applied (47/47)</span>
+<span class="ok">Razorpay webhook registered</span>
+<span class="ok">Server running at <span class="url">http://localhost:3000</span></span>
+
+<span class="prompt">$</span> <span class="cmd">staykit mcp register --claude</span>
+<span class="ok">MCP endpoint added to Claude.ai</span>
+<span class="info"># Open Claude and say: "what bookings do I have today?"</span>
+
+<span class="prompt">$</span><span class="term-cursor"></span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── PRICING ───────── -->
+<section class="section" id="pricing" data-screen-label="10 Pricing">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow"><span class="dot"></span>Honest pricing</div>
+      <h2 class="h2" style="margin-top: 14px;">Honest pricing. At cost.</h2>
+      <p class="lede">
+        The open-source version is free forever. If you'd rather we handle the servers, here's what it actually costs us to run &mdash; plus enough margin to keep the lights on and answer your support emails.
+      </p>
+    </div>
+
+    <div class="pricing-grid">
+      <!-- Self-host -->
+      <article class="tier">
+        <div class="name">Self-host</div>
+        <div class="price free">
+          <span class="amt">₹0</span>
+          <span class="per">/ forever</span>
+        </div>
+        <div class="annual">&nbsp;</div>
+        <div class="tag">Forever. Truly.</div>
+        <ul>
+          <li>All features</li>
+          <li>All updates</li>
+          <li>Community support</li>
+          <li>Your servers, your rules</li>
+        </ul>
+        <a href="#oss" class="btn">Get the code →</a>
+        <div class="trial-note">AGPL-3.0 · no strings</div>
+      </article>
+
+      <!-- Starter -->
+      <article class="tier">
+        <div class="name">Starter Cloud</div>
+        <div class="price">
+          <span class="amt">₹149</span>
+          <span class="per">/month</span>
+        </div>
+        <div class="annual">or ₹1,499/year — save 16%</div>
+        <div class="tag">Best for 1 small homestay.</div>
+        <ul>
+          <li><strong style="font-weight:600;">1 property</strong>, up to 8 rooms</li>
+          <li>Indian servers (Hetzner / AWS Mumbai)</li>
+          <li>Daily backups · 7-day retention</li>
+          <li>yourname.staykit.in subdomain</li>
+          <li>Email support · 48h response</li>
+          <li>Free TLS · free updates</li>
+          <li class="muted">Pass-through SMS / WhatsApp cost</li>
+        </ul>
+        <a href="#" class="btn btn-primary">Start free trial →</a>
+        <div class="trial-note">14 days · no card required</div>
+      </article>
+
+      <!-- Standard -->
+      <article class="tier featured">
+        <div class="name">Standard Cloud</div>
+        <div class="price">
+          <span class="amt">₹349</span>
+          <span class="per">/month</span>
+        </div>
+        <div class="annual">or ₹3,499/year — save 16%</div>
+        <div class="tag">Most owners pick this.</div>
+        <ul>
+          <li><strong style="font-weight:600;">Up to 3 properties</strong>, unlimited rooms</li>
+          <li>Everything in Starter</li>
+          <li>30-day backup retention</li>
+          <li>Priority email · 24h response</li>
+          <li>WhatsApp support channel</li>
+          <li>Bring-your-own-domain</li>
+          <li class="muted">Pass-through SMS / WhatsApp cost</li>
+        </ul>
+        <a href="#" class="btn btn-accent">Start free trial →</a>
+        <div class="trial-note">14 days · no card required</div>
+      </article>
+
+      <!-- Dedicated -->
+      <article class="tier">
+        <div class="name">Dedicated</div>
+        <div class="price">
+          <span class="amt">₹799</span>
+          <span class="per">/month</span>
+        </div>
+        <div class="annual">or ₹7,999/year — save 16%</div>
+        <div class="tag">For chains and busy properties.</div>
+        <ul>
+          <li><strong style="font-weight:600;">Unlimited properties</strong></li>
+          <li>Dedicated container · your CPU</li>
+          <li>90-day backup retention</li>
+          <li>Phone + WhatsApp support</li>
+          <li>99.9% uptime SLA</li>
+          <li>Custom domain included</li>
+          <li>Onboarding call</li>
+        </ul>
+        <a href="#" class="btn">Talk to us →</a>
+        <div class="trial-note">migration help included</div>
+      </article>
+    </div>
+
+    <div class="fineprint">
+      <p style="margin:0;"><strong>Why so cheap?</strong> Because hosting one homestay's data costs us about ₹100–₹150/month in real infrastructure (VPS slice, S3 storage, email allowance, backups). We're charging close to that, plus enough to pay one human to answer your questions.</p>
+      <p style="margin:0;"><strong>SMS, WhatsApp, and email charges are passed through</strong> at provider cost — typically ₹0.15/SMS, ₹0.125/WhatsApp utility message, free for the first 500 emails/month. You can also plug in your own MSG91 / Twilio / Resend account and pay them directly.</p>
+      <p style="margin:0;"><strong>We don't take a cut of your bookings.</strong> Razorpay's fees go to Razorpay. Your revenue is your revenue.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── FAQ ───────── -->
+<section class="section bg-cream" id="faq" data-screen-label="11 FAQ">
+  <div class="container-narrow">
+    <div class="section-head">
+      <div class="eyebrow dim"><span class="dot"></span>Questions, answered</div>
+      <h2 class="h2" style="margin-top: 14px;">Frequently asked.</h2>
+    </div>
+
+    <div class="faq-list">
+      <details class="faq-item" open>
+        <summary class="faq-q">Is StayKit really free if I self-host? <span class="ic">+</span></summary>
+        <div class="faq-a"><p>Yes. AGPL-3.0. No “open-core” tricks, no feature flags. Every feature on the cloud version is in the open-source repo. If you can run Docker, you can run StayKit.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">Why do you not have a channel manager / OTA sync? <span class="ic">+</span></summary>
+        <div class="faq-a"><p>Because it's a separate, much harder problem that 70% of homestay owners don't actually need. If most of your bookings are direct, phone, WhatsApp, or Instagram — StayKit is for you. If 50%+ come from OTAs, look at Djubo or Hostaway.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">How is the AI assistant different from a chatbot? <span class="ic">+</span></summary>
+        <div class="faq-a"><p>A chatbot answers questions. StayKit's AI takes actions — creates bookings, sends payment links, processes refunds — with your permission, fully logged, fully reversible.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">Can the AI mess things up? <span class="ic">+</span></summary>
+        <div class="faq-a"><p>Every AI action requires a permission scope you grant explicitly. Destructive actions (refunds, cancellations) need separate scopes. Every action is in the audit log. You can revoke AI access in one click.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">What about my guest data — is it safe? <span class="ic">+</span></summary>
+        <div class="faq-a"><p>Your data lives on Indian servers (cloud tier) or your own servers (self-host). Guest ID documents are encrypted at rest. We follow DPDP Act 2023 + DPDP Rules 2025 to the letter.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">Do I need GST registration to use StayKit? <span class="ic">+</span></summary>
+        <div class="faq-a"><p>No. If your turnover is under ₹20 lakh (₹10 lakh in HP, Uttarakhand, Northeast), you can use StayKit without GSTIN. We'll keep your invoices ready for when you cross the threshold.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">Can I switch from Djubo / Qloapps / spreadsheet? <span class="ic">+</span></summary>
+        <div class="faq-a"><p>Yes. We import from CSV, Google Sheets, and most PMS exports. Free migration help on Standard and Dedicated plans.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">What if StayKit shuts down? <span class="ic">+</span></summary>
+        <div class="faq-a"><p>You export your data anytime, in standard formats (JSON, CSV, SQL). Or you keep using the open-source version — it'll keep working without us.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">Is there a free trial? <span class="ic">+</span></summary>
+        <div class="faq-a"><p>Yes — 14 days, no credit card required. After that, ₹149/month or self-host for free.</p></div>
+      </details>
+      <details class="faq-item">
+        <summary class="faq-q">What about WhatsApp Business API? <span class="ic">+</span></summary>
+        <div class="faq-a"><p>We support it via MSG91, Gupshup, and Interakt. You'll need an approved Meta Business account and pre-approved templates. We help with the setup.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── FINAL CTA ───────── -->
+<section class="final-cta" data-screen-label="12 Final CTA">
+  <div class="container">
+    <h2>
+      Built by people who use it.<br/>
+      Run by people who <span class="accent">answer the phone.</span>
+    </h2>
+    <p>Try StayKit free for 14 days. Or download it and run it yourself. Either way &mdash; no card, no commitment.</p>
+    <div class="cta-row">
+      <a href="#" class="btn btn-accent btn-lg">
+        Start free trial
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+      </a>
+      <a href="https://github.com/staykit/staykit" class="btn btn-outline-dark btn-lg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.1 3.29 9.42 7.86 10.96.58.11.79-.25.79-.55 0-.27-.01-1.16-.01-2.1-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.74.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.08-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.17 1.18.92-.26 1.91-.39 2.89-.39.98 0 1.97.13 2.89.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.77.11 3.06.74.8 1.19 1.82 1.19 3.08 0 4.42-2.69 5.4-5.25 5.69.41.36.78 1.06.78 2.14 0 1.55-.02 2.79-.02 3.17 0 .31.21.67.8.55C20.21 21.42 23.5 17.1 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <p class="meta">14 days · no credit card · cancel by closing the tab</p>
+  </div>
+</section>
+
+<!-- ───────── FOOTER ───────── -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="#top">
+          <span class="mark">S</span>
+          <span>StayKit</span>
+        </a>
+        <p>The open homestay manager, built in India. Powered by you &mdash; and your AI.</p>
+      </div>
+
+      <div>
+        <h5>Product</h5>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#">Roadmap</a></li>
+          <li><a href="#">Changelog</a></li>
+          <li><a href="#">Status</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Use cases</h5>
+        <ul>
+          <li><a href="#">Single homestay</a></li>
+          <li><a href="#">Multi-property</a></li>
+          <li><a href="#">Boutique chains</a></li>
+          <li><a href="#">Vacation rentals</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Resources</h5>
+        <ul>
+          <li><a href="#">Docs</a></li>
+          <li><a href="#">Self-hosting guide</a></li>
+          <li><a href="#">MCP guide</a></li>
+          <li><a href="#">GST guide</a></li>
+          <li><a href="#">Form C guide</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Open source</h5>
+        <ul>
+          <li><a href="#">GitHub</a></li>
+          <li><a href="#">Discord</a></li>
+          <li><a href="#">Contributing</a></li>
+          <li><a href="#">License (AGPL-3.0)</a></li>
+          <li><a href="#">Security</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Company</h5>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Press kit</a></li>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Terms</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div>© 2026 StayKit · Made with ☕ in Bangalore</div>
+      <div class="stack">
+        Built on
+        <span class="chip">Next.js</span>
+        <span class="chip">Prisma</span>
+        <span class="chip">MCP</span>
+        <span class="chip">SQLite + Litestream</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Nav scrolled state
+  (function() {
+    const nav = document.getElementById('nav');
+    const onScroll = () => {
+      if (window.scrollY > 12) nav.classList.add('scrolled');
+      else nav.classList.remove('scrolled');
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+
+  // FAQ — close others when one opens for nicer behavior
+  (function() {
+    const items = document.querySelectorAll('.faq-item');
+    items.forEach(item => {
+      item.addEventListener('toggle', (e) => {
+        if (item.open) {
+          // mark for CSS
+          item.classList.add('open');
+          items.forEach(other => { if (other !== item) { other.open = false; other.classList.remove('open'); } });
+        } else {
+          item.classList.remove('open');
+        }
+      });
+    });
+    // initialise open class for any pre-open items
+    items.forEach(it => { if (it.open) it.classList.add('open'); });
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,604 @@
+// StayKit — Prisma schema (SQLite).
+// Production hardening (better-sqlite3 driver adapter, WAL, Litestream) is documented
+// in docs/self-hosting.md. SQLite is production-fit for the single-owner workload;
+// migration to Postgres is a one-line `provider` switch — see docs/migrate-to-postgres.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ───── Tenancy / Identity ─────
+model Owner {
+  id           String           @id @default(cuid())
+  name         String
+  email        String?          @unique
+  phone        String           @unique
+  createdAt    DateTime         @default(now())
+  properties   Property[]
+  users        User[]
+  guests       Guest[]
+  channels     ChannelSource[]
+  templates    NotificationTemplate[]
+  automations  NotificationAutomation[]
+  oauthClients McpOAuthClient[]
+}
+
+model User {
+  id             String          @id @default(cuid())
+  ownerId        String
+  owner          Owner           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  phone          String          @unique
+  passwordHash   String? // optional; OTP is default
+  role           Role            @default(STAFF)
+  active         Boolean         @default(true)
+  propertyScopes PropertyScope[]
+  createdAt      DateTime        @default(now())
+
+  @@index([ownerId])
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+model PropertyScope {
+  userId      String
+  propertyId  String
+  permissions String // CSV of permission keys, e.g. "bookings:write,payments:refund"
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, propertyId])
+}
+
+model Property {
+  id                 String             @id @default(cuid())
+  ownerId            String
+  owner              Owner              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name               String
+  addressLine1       String
+  addressLine2       String?
+  city               String
+  state              String // KA, KL, HP, UK, GA, MH, etc.
+  pincode            String
+  gstin              String?
+  sacCode            String             @default("996311") // Room or unit accommodation services
+  checkInTime        String             @default("14:00")
+  checkOutTime       String             @default("11:00")
+  cancellationPolicy String?
+  invoicePrefix      String             @default("INV")
+  invoiceCounter     Int                @default(0)
+  defaultCurrency    String             @default("INR")
+  active             Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  rooms              Room[]
+  roomTypes          RoomType[]
+  ratePlans          RatePlan[]
+  bookings           Booking[]
+  scopes             PropertyScope[]
+  maintenance        MaintenanceBlock[]
+
+  @@index([ownerId])
+}
+
+// ───── Inventory ─────
+model RoomType {
+  id           String   @id @default(cuid())
+  propertyId   String
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name         String
+  color        String   @default("#3D5A80")
+  maxOccupancy Int      @default(2)
+  baseRate     Int // paise
+  description  String?
+  sortOrder    Int      @default(0)
+  rooms        Room[]
+  overrides    RatePlanOverride[]
+
+  @@unique([propertyId, name])
+}
+
+model Room {
+  id          String             @id @default(cuid())
+  propertyId  String
+  property    Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomTypeId  String
+  roomType    RoomType           @relation(fields: [roomTypeId], references: [id])
+  name        String // "Cottage 1" or "Room 101"
+  number      String             @default("")
+  active      Boolean            @default(true)
+  cleanliness Cleanliness        @default(CLEAN)
+  amenities   String             @default("[]") // JSON array
+  photos      String             @default("[]") // JSON array of FileUpload ids
+  bookings    BookingRoom[]
+  blocks      MaintenanceBlock[]
+
+  @@unique([propertyId, name])
+}
+
+enum Cleanliness {
+  CLEAN
+  DIRTY
+  IN_PROGRESS
+  OUT_OF_ORDER
+}
+
+model RatePlan {
+  id         String             @id @default(cuid())
+  propertyId String
+  property   Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name       String
+  priority   Int                @default(0)
+  startDate  DateTime
+  endDate    DateTime
+  daysOfWeek String             @default("1111111") // bitmask Mon..Sun
+  minStay    Int                @default(1)
+  maxStay    Int?
+  refundable Boolean            @default(true)
+  overrides  RatePlanOverride[]
+
+  @@index([propertyId, startDate, endDate])
+}
+
+model RatePlanOverride {
+  id         String   @id @default(cuid())
+  ratePlanId String
+  ratePlan   RatePlan @relation(fields: [ratePlanId], references: [id], onDelete: Cascade)
+  roomTypeId String
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id])
+  amount     Int // paise per night
+
+  @@unique([ratePlanId, roomTypeId])
+}
+
+model MaintenanceBlock {
+  id          String   @id @default(cuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  startDate   DateTime
+  endDate     DateTime
+  reason      String
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([roomId, startDate, endDate])
+}
+
+// ───── Channels ─────
+model ChannelSource {
+  id       String    @id @default(cuid())
+  ownerId  String
+  owner    Owner     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  key      String // stable slug: direct, walkin, phone, instagram, whatsapp, airbnb, booking, mmt
+  name     String // "Direct", "Walk-in", "Phone", "Instagram", "Airbnb", "Booking.com", "MMT"
+  color    String    @default("#3D5A80")
+  active   Boolean   @default(true)
+  bookings Booking[]
+
+  @@unique([ownerId, key])
+}
+
+// ───── Bookings ─────
+model Booking {
+  id                 String            @id @default(cuid())
+  ref                String            @unique // human-friendly e.g. "SK-A8X3Q"
+  propertyId         String
+  property           Property          @relation(fields: [propertyId], references: [id])
+  channelId          String
+  channel            ChannelSource     @relation(fields: [channelId], references: [id])
+  status             BookingStatus     @default(CONFIRMED)
+  checkIn            DateTime
+  checkOut           DateTime
+  adults             Int               @default(1)
+  children           Int               @default(0)
+  subtotal           Int // paise
+  taxAmount          Int // paise
+  totalAmount        Int // paise
+  amountPaid         Int               @default(0)
+  notes              String?
+  cancellationReason String?
+  cancelledAt        DateTime?
+  checkedInAt        DateTime?
+  checkedOutAt       DateTime?
+  formCFiledAt       DateTime?
+  createdById        String?
+  createdViaMcp      Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  rooms              BookingRoom[]
+  guests             BookingGuest[]
+  payments           Payment[]
+  paymentLinks       PaymentLink[]
+  refunds            Refund[]
+  notifications      NotificationLog[]
+
+  @@index([propertyId, checkIn, checkOut])
+  @@index([status])
+}
+
+enum BookingStatus {
+  TENTATIVE
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+// One row per (booking, room, night) — this is the conflict-prevention table.
+model BookingRoom {
+  id          String   @id @default(cuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id])
+  date        DateTime // the night occupied (UTC midnight, IST-anchored at display)
+  rateApplied Int // paise
+
+  // Hard guarantee: one room can only have ONE active booking per night.
+  @@unique([roomId, date]) // ← double-booking prevention
+  @@index([bookingId])
+}
+
+model BookingGuest {
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  guestId   String
+  guest     Guest   @relation(fields: [guestId], references: [id])
+  isPrimary Boolean @default(false)
+
+  @@index([bookingId])
+}
+
+model Guest {
+  id               String         @id @default(cuid())
+  ownerId          String
+  owner            Owner          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name             String
+  phone            String
+  email            String?
+  city             String?
+  isForeign        Boolean        @default(false)
+  nationality      String?
+  idType           String? // AADHAAR, PASSPORT, DRIVING_LICENSE, VOTER_ID
+  idLast4          String?
+  idFileId         String? // → FileUpload; encrypted at rest
+  marketingConsent Boolean        @default(false)
+  dpdpConsentAt    DateTime?
+  notes            String?
+  createdAt        DateTime       @default(now())
+  bookings         BookingGuest[]
+
+  @@unique([ownerId, phone])
+  @@index([ownerId])
+}
+
+// ───── Payments ─────
+model PaymentLink {
+  id             String            @id @default(cuid())
+  bookingId      String
+  booking        Booking           @relation(fields: [bookingId], references: [id])
+  razorpayLinkId String            @unique // plink_xxx
+  shortUrl       String
+  amount         Int // paise
+  status         PaymentLinkStatus @default(CREATED)
+  expiresAt      DateTime? // Razorpay default is 6 months from creation
+  notifyVia      String            @default("sms,email")
+  createdAt      DateTime          @default(now())
+  paidAt         DateTime?
+  payments       Payment[]
+
+  @@index([bookingId])
+}
+
+enum PaymentLinkStatus {
+  CREATED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+  EXPIRED
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  bookingId         String
+  booking           Booking       @relation(fields: [bookingId], references: [id])
+  paymentLinkId     String?
+  paymentLink       PaymentLink?  @relation(fields: [paymentLinkId], references: [id])
+  razorpayPaymentId String?       @unique // pay_xxx
+  razorpayOrderId   String?
+  amount            Int // paise
+  status            PaymentStatus @default(CREATED)
+  method            String? // upi, card, netbanking, wallet
+  capturedAt        DateTime?
+  settledAt         DateTime?
+  settlementId      String?
+  notes             String? // JSON
+  rawWebhook        String?
+  createdAt         DateTime      @default(now())
+  refunds           Refund[]
+
+  @@index([bookingId])
+}
+
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+model Refund {
+  id               String       @id @default(cuid())
+  bookingId        String
+  booking          Booking      @relation(fields: [bookingId], references: [id])
+  paymentId        String
+  payment          Payment      @relation(fields: [paymentId], references: [id])
+  razorpayRefundId String?      @unique
+  amount           Int // paise
+  speed            String       @default("normal") // normal | optimum
+  reason           String?
+  status           RefundStatus @default(CREATED)
+  initiatedById    String
+  createdAt        DateTime     @default(now())
+  processedAt      DateTime?
+
+  @@index([bookingId])
+}
+
+enum RefundStatus {
+  CREATED
+  PROCESSED
+  FAILED
+}
+
+model WebhookEvent {
+  id         String   @id @default(cuid())
+  eventId    String   @unique // x-razorpay-event-id
+  source     String // "razorpay" | "msg91" | …
+  receivedAt DateTime @default(now())
+  payload    String // raw JSON
+}
+
+// ───── Notifications ─────
+model NotificationTemplate {
+  id                   String              @id @default(cuid())
+  ownerId              String
+  owner                Owner               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  channel              NotificationChannel
+  triggerKey           String // BOOKING_CONFIRMED, PAYMENT_LINK_SENT, ...
+  name                 String
+  subject              String? // email only
+  body                 String // mustache {{var}}
+  dltTemplateId        String? // mandatory for SMS
+  whatsappTemplateName String? // mandatory for WhatsApp
+  active               Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+
+  @@unique([ownerId, channel, triggerKey])
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+model NotificationAutomation {
+  id           String  @id @default(cuid())
+  ownerId      String
+  owner        Owner   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  triggerKey   String
+  templateId   String
+  delayMinutes Int     @default(0) // negative for "before" — e.g. -1440 = 24h before check-in
+  active       Boolean @default(true)
+  conditions   String? // JSON predicate
+}
+
+model NotificationLog {
+  id                String             @id @default(cuid())
+  bookingId         String?
+  booking           Booking?           @relation(fields: [bookingId], references: [id])
+  channel           NotificationChannel
+  to                String
+  templateId        String?
+  triggerKey        String
+  status            NotificationStatus @default(QUEUED)
+  attempts          Int                @default(0)
+  lastError         String?
+  providerMessageId String?
+  payload           String?
+  scheduledFor      DateTime
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime           @default(now())
+
+  @@index([status, scheduledFor])
+  @@index([bookingId])
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENDING
+  SENT
+  DELIVERED
+  FAILED
+  DLQ
+}
+
+// ───── Auth / OTP / Sessions ─────
+model OtpRequest {
+  id         String     @id @default(cuid())
+  contact    String // phone or email
+  purpose    OtpPurpose
+  codeHash   String // sha256(code + pepper)
+  attempts   Int        @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  ip         String?
+  createdAt  DateTime   @default(now())
+
+  @@index([contact, purpose, createdAt])
+}
+
+enum OtpPurpose {
+  STAFF_LOGIN
+  GUEST_LOGIN
+  ACTION_CONFIRM
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String?
+  guestPhone String?
+  token      String    @unique // hashed
+  scope      String    @default("staff") // staff | guest
+  expiresAt  DateTime
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@index([userId])
+  @@index([guestPhone])
+}
+
+// ───── MCP / OAuth ─────
+model McpOAuthClient {
+  id           String           @id @default(cuid())
+  ownerId      String
+  owner        Owner            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  clientId     String           @unique
+  clientName   String
+  redirectUris String // JSON array
+  scopes       String // CSV
+  publicKeyJwk String? // for Client ID Metadata Documents
+  createdAt    DateTime         @default(now())
+  revokedAt    DateTime?
+  tokens       McpAccessToken[]
+}
+
+model McpAccessToken {
+  id               String         @id @default(cuid())
+  clientId         String
+  client           McpOAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId           String
+  scopes           String
+  tokenHash        String         @unique
+  expiresAt        DateTime
+  refreshHash      String?        @unique
+  refreshExpiresAt DateTime?
+  resource         String // RFC 8707 — e.g., https://app.example.com/mcp
+  lastUsedAt       DateTime?
+  createdAt        DateTime       @default(now())
+  revokedAt        DateTime?
+
+  @@index([userId])
+}
+
+model McpAuditEntry {
+  id         String   @id @default(cuid())
+  tokenId    String?
+  userId     String?
+  clientId   String?
+  tool       String
+  args       String // JSON, redacted
+  result     String? // truncated JSON
+  durationMs Int
+  status     String // OK | DENIED | ERROR
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([clientId, createdAt])
+}
+
+// ───── Files / Audit / Jobs ─────
+model FileUpload {
+  id           String   @id @default(cuid())
+  ownerId      String
+  kind         FileKind
+  path         String // local path or s3 key
+  storage      String   @default("local") // local | s3
+  mime         String
+  sizeBytes    Int
+  sha256       String
+  encrypted    Boolean  @default(false)
+  uploadedById String
+  createdAt    DateTime @default(now())
+}
+
+enum FileKind {
+  GUEST_ID
+  ROOM_PHOTO
+  INVOICE_PDF
+  OTHER
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  ownerId    String
+  actorType  String // USER | MCP | SYSTEM | GUEST
+  actorId    String?
+  actorName  String?
+  action     String // BOOKING_CREATED, PAYMENT_CAPTURED, …
+  entityType String?
+  entityId   String?
+  summary    String? // human-readable, drives the activity feed
+  diff       String? // JSON Patch
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([ownerId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  kind        String
+  payload     String // JSON
+  runAfter    DateTime  @default(now())
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(8)
+  status      JobStatus @default(QUEUED)
+  lastError   String?
+  lockedAt    DateTime?
+  lockedBy    String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([status, runAfter])
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+  DLQ
+}
+
+model DailyOccupancy {
+  id          String   @id @default(cuid())
+  propertyId  String
+  date        DateTime
+  roomsTotal  Int
+  roomsSold   Int
+  revenue     Int // paise
+  createdAt   DateTime @default(now())
+
+  @@unique([propertyId, date])
+}

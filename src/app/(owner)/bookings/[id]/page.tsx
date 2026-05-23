@@ -1,0 +1,128 @@
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/db";
+import { getAppContext } from "@/lib/auth/context";
+import { shortDate, nightsBetween } from "@/lib/dates";
+import { inr } from "@/lib/money";
+import { deriveState } from "@/components/ui";
+import { BookingDetailView, type BookingDetailData } from "@/components/owner/BookingDetailView";
+
+export const dynamic = "force-dynamic";
+
+const CHANNEL_ICON: Record<string, { icon: string; tone: string }> = {
+  WHATSAPP: { icon: "message-circle", tone: "brand" },
+  SMS: { icon: "phone", tone: "" },
+  EMAIL: { icon: "mail", tone: "accent" },
+};
+
+export default async function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const ctx = (await getAppContext())!;
+  const { id } = await params;
+
+  const b = await prisma.booking.findFirst({
+    where: { id, property: { ownerId: ctx.ownerId } },
+    include: {
+      property: true,
+      channel: true,
+      guests: { where: { isPrimary: true }, include: { guest: { include: { _count: { select: { bookings: true } } } } } },
+      rooms: { include: { room: true } },
+      payments: { orderBy: { createdAt: "asc" } },
+      paymentLinks: { orderBy: { createdAt: "asc" } },
+      notifications: { orderBy: { createdAt: "desc" } },
+    },
+  });
+  if (!b) notFound();
+
+  const audit = await prisma.auditLog.findMany({
+    where: { entityType: "Booking", entityId: b.id },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const guest = b.guests[0]?.guest;
+  const room = b.rooms[0]?.room;
+  const nights = nightsBetween(b.checkIn, b.checkOut);
+  const due = b.totalAmount - b.amountPaid;
+  const nightly = nights ? Math.round(b.subtotal / nights) : b.subtotal;
+  const taxRate = b.subtotal > 0 ? Math.round((b.taxAmount / b.subtotal) * 100) : 0;
+
+  const payments: BookingDetailData["payments"] = [];
+  for (const link of b.paymentLinks) {
+    payments.push({
+      icon: "send",
+      tone: "",
+      title: `Payment link created (${inr(link.amount)})`,
+      sub: `${link.notifyVia.toUpperCase()} · ${fmtTime(link.createdAt)}`,
+    });
+  }
+  for (const p of b.payments) {
+    payments.push({
+      icon: "check",
+      tone: "ok",
+      title: `Razorpay received ${inr(p.amount)}`,
+      sub: `${(p.method ?? "payment").toUpperCase()} · ${fmtTime(p.capturedAt ?? p.createdAt)}`,
+    });
+  }
+  if (due > 0) {
+    payments.push({ icon: "clock", tone: "empty", title: `${inr(due)} still to collect`, sub: "Awaiting payment" });
+  }
+
+  const data: BookingDetailData = {
+    id: b.id,
+    ref: b.ref,
+    state: deriveState(b),
+    room: { number: room?.number ?? "", name: room?.name ?? "" },
+    guest: guest
+      ? {
+          id: guest.id,
+          name: guest.name,
+          city: guest.city,
+          phone: guest.phone,
+          email: guest.email,
+          isForeign: guest.isForeign,
+          idType: guest.idType,
+          idLast4: guest.idLast4,
+          stays: guest._count.bookings,
+        }
+      : null,
+    checkIn: shortDate(b.checkIn),
+    checkOut: shortDate(b.checkOut),
+    checkInTime: b.property.checkInTime,
+    checkOutTime: b.property.checkOutTime,
+    nights,
+    adults: b.adults,
+    children: b.children,
+    channel: { key: b.channel.key, name: b.channel.name },
+    money: {
+      subtotal: inr(b.subtotal),
+      tax: inr(b.taxAmount),
+      total: inr(b.totalAmount),
+      paid: inr(b.amountPaid),
+      due: inr(due),
+      dueRaw: due,
+      taxLabel: taxRate ? `${taxRate}% GST` : "No GST (owner unregistered)",
+      nightly: inr(nightly),
+    },
+    payments,
+    comms: b.notifications.map((n) => {
+      const ci = CHANNEL_ICON[n.channel] ?? { icon: "send", tone: "" };
+      return {
+        icon: ci.icon,
+        tone: ci.tone,
+        title: `${n.triggerKey.replaceAll("_", " ").toLowerCase()} (${n.channel.toLowerCase()})`,
+        sub: `${fmtTime(n.sentAt ?? n.createdAt)} · ${n.status.toLowerCase()}`,
+      };
+    }),
+    audit: audit.map((a) => ({
+      bot: a.actorType === "MCP",
+      actor: a.actorName ?? a.actorType,
+      what: a.summary ?? a.action,
+      when: fmtTime(a.createdAt),
+    })),
+    notes: b.notes,
+  };
+
+  return <BookingDetailView data={data} />;
+}
+
+function fmtTime(d: Date): string {
+  return d.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
