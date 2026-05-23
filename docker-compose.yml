@@ -1,0 +1,55 @@
+# StayKit — single container + a persistent volume for the SQLite DB.
+#
+#   cp .env.example .env        # set OTP_PEPPER, APP_BASE_URL, provider keys
+#   docker compose up --build   # http://localhost:3000
+#
+# DATABASE_URL is fixed to the in-container volume path and intentionally overrides
+# whatever is in .env (which points at a host path for local, non-Docker dev).
+
+services:
+  app:
+    build:
+      context: .
+      target: runner
+    image: staykit:latest
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "file:/data/staykit.db?connection_limit=1"
+      APP_BASE_URL: "${APP_BASE_URL:-http://localhost:3000}"
+    volumes:
+      - staykit-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  # Optional one-shot seeder (demo owner + sample data). Shares the same volume.
+  #   docker compose --profile seed run --rm seed
+  seed:
+    build:
+      context: .
+      target: seed
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "file:/data/staykit.db?connection_limit=1"
+    volumes:
+      - staykit-data:/data
+    profiles:
+      - seed
+    restart: "no"
+
+volumes:
+  staykit-data:

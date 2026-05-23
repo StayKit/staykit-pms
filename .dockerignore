@@ -1,0 +1,39 @@
+# Build artifacts & deps (rebuilt inside the image)
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+
+# Local database / uploads — these live on the mounted /data volume, never in the image
+data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Secrets & local env (pass via env_file / -e at runtime instead)
+.env
+.env.*
+!.env.example
+
+# VCS, CI, editor
+.git
+.github
+.vscode
+.idea
+.DS_Store
+
+# Docs, design assets, tests — not needed at runtime
+design
+docs
+test
+**/*.test.ts
+**/*.test.tsx
+.thumbnail
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose*.yml

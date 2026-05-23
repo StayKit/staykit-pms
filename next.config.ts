@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Emit a self-contained server (.next/standalone/server.js) so the Docker
+  // runtime image needs only the traced node_modules — see Dockerfile.
+  output: "standalone",
   // better-sqlite3 / prisma are server-only native deps; keep them external.
   serverExternalPackages: ["@prisma/client", "prisma"],
   experimental: {

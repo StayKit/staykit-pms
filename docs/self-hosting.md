@@ -16,6 +16,41 @@ npm start                   # serves on :3000 behind your reverse proxy
 Put it behind a TLS-terminating reverse proxy (Caddy/Nginx/Traefik). Cookies are `Secure` in
 production, so HTTPS is required for login.
 
+## Quick start (Docker)
+
+The repo ships a multi-stage `Dockerfile` (Next.js standalone output, non-root, ~Debian-slim base)
+and a `docker-compose.yml` with a persistent `/data` volume for the SQLite file.
+
+```bash
+cp .env.example .env          # set OTP_PEPPER, APP_BASE_URL, provider keys
+docker compose up --build     # http://localhost:3000
+```
+
+The container entrypoint runs `prisma db push` against `/data/staykit.db` on every start, so the
+schema is created on first boot and kept in sync after upgrades. `DATABASE_URL` is fixed by Compose
+to the in-container volume path and overrides the value in `.env` (which points at a host path used
+only for local, non-Docker dev).
+
+Seed the demo owner + sample data (optional, one-shot):
+
+```bash
+docker compose --profile seed run --rm seed
+```
+
+Plain Docker without Compose:
+
+```bash
+docker build -t staykit .
+docker run -d -p 3000:3000 \
+  -v staykit-data:/data \
+  -e OTP_PEPPER="$(openssl rand -hex 32)" \
+  -e APP_BASE_URL="https://stay.example.in" \
+  staykit
+```
+
+The image's `HEALTHCHECK` polls `GET /api/health`. With no provider keys set, payments and
+notifications run in mock/console mode (see the main README).
+
 ## SQLite production hardening
 
 Apply these PRAGMAs on the database (also documented in the schema). `better-sqlite3` via Prisma's
