@@ -83,7 +83,11 @@ export function OtpFlow({
               : "Use the number on your booking."}
           </div>
         </div>
-        {error && <div className="error-text" style={{ marginTop: 8 }}>{error}</div>}
+        {error && (
+          <div className="error-text" style={{ marginTop: 8 }}>
+            {error}
+          </div>
+        )}
         <button
           className="btn btn-primary btn-lg"
           style={{ width: "100%", justifyContent: "center", marginTop: 16 }}
@@ -121,9 +125,15 @@ export function OtpFlow({
         />
       </div>
       {devCode && (
-        <div className="dev-code">Dev mode: your code is <b>{devCode}</b> (sent via SMS in production).</div>
+        <div className="dev-code">
+          Dev mode: your code is <b>{devCode}</b> (sent via SMS in production).
+        </div>
       )}
-      {error && <div className="error-text" style={{ marginTop: 8 }}>{error}</div>}
+      {error && (
+        <div className="error-text" style={{ marginTop: 8 }}>
+          {error}
+        </div>
+      )}
       <button
         className="btn btn-primary btn-lg"
         style={{ width: "100%", justifyContent: "center", marginTop: 16 }}
@@ -133,7 +143,18 @@ export function OtpFlow({
       </button>
       <div style={{ fontSize: 12.5, color: "var(--muted)", textAlign: "center", marginTop: 14 }}>
         Didn&apos;t get it?{" "}
-        <button type="button" className="btn-ghost" style={{ color: "var(--brand)", fontWeight: 550, padding: 0, border: 0, cursor: "pointer" }} onClick={sendCode}>
+        <button
+          type="button"
+          className="btn-ghost"
+          style={{
+            color: "var(--brand)",
+            fontWeight: 550,
+            padding: 0,
+            border: 0,
+            cursor: "pointer",
+          }}
+          onClick={sendCode}
+        >
           Resend code
         </button>
       </div>

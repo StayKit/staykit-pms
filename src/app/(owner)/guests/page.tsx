@@ -29,7 +29,9 @@ export default async function GuestsPage({
           <h2 style={{ fontSize: 22 }}>Guests</h2>
           <div className="sub">{guests.length} guests in your address book</div>
         </div>
-        <button className="btn btn-primary"><Icon name="user-plus" className="icon-sm" /> Add guest</button>
+        <button className="btn btn-primary">
+          <Icon name="user-plus" className="icon-sm" /> Add guest
+        </button>
       </div>
 
       <div className="card">
@@ -53,29 +55,52 @@ export default async function GuestsPage({
                     <div className="guest-cell">
                       <Avatar name={g.name} id={g.id} size={32} />
                       <div>
-                        <div className="name" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div
+                          className="name"
+                          style={{ display: "flex", alignItems: "center", gap: 6 }}
+                        >
                           {g.name}
-                          {g.isForeign && <Icon name="globe" className="icon-sm" style={{ color: "var(--muted)" }} />}
+                          {g.isForeign && (
+                            <Icon
+                              name="globe"
+                              className="icon-sm"
+                              style={{ color: "var(--muted)" }}
+                            />
+                          )}
                         </div>
                         <div className="sub">{g.email ?? "—"}</div>
                       </div>
                     </div>
                   </td>
-                  <td><span className="tabular text-sm">{g.phone}</span></td>
+                  <td>
+                    <span className="tabular text-sm">{g.phone}</span>
+                  </td>
                   <td className="text-sm">{g.city ?? "—"}</td>
-                  <td><span className="pill pill-neutral">{g._count.bookings} stays</span></td>
+                  <td>
+                    <span className="pill pill-neutral">{g._count.bookings} stays</span>
+                  </td>
                   <td>
                     {g.marketingConsent ? (
-                      <span className="pill pill-brand"><Icon name="check" className="icon-sm" /> Opted in</span>
+                      <span className="pill pill-brand">
+                        <Icon name="check" className="icon-sm" /> Opted in
+                      </span>
                     ) : (
                       <span className="pill pill-neutral">Not opted in</span>
                     )}
                   </td>
-                  <td><button className="icon-btn"><Icon name="more" className="icon-sm" /></button></td>
+                  <td>
+                    <button className="icon-btn">
+                      <Icon name="more" className="icon-sm" />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {guests.length === 0 && (
-                <tr><td colSpan={6} className="empty">No guests found.</td></tr>
+                <tr>
+                  <td colSpan={6} className="empty">
+                    No guests found.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

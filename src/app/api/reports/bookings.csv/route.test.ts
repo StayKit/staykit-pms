@@ -15,7 +15,14 @@ let fx: Fixture;
 beforeEach(async () => {
   await resetDb();
   fx = await seedBasic({ gstin: null });
-  mockCtx.mockResolvedValue({ ownerId: fx.owner.id, userId: fx.user.id, role: "OWNER", name: "Priya", propertyScopes: [], demo: true });
+  mockCtx.mockResolvedValue({
+    ownerId: fx.owner.id,
+    userId: fx.user.id,
+    role: "OWNER",
+    name: "Priya",
+    propertyScopes: [],
+    demo: true,
+  });
 });
 
 describe("GET /api/reports/bookings.csv", () => {
@@ -27,16 +34,27 @@ describe("GET /api/reports/bookings.csv", () => {
 
   it("streams a CSV with a header and one row per booking", async () => {
     await createBooking({
-      ownerId: fx.owner.id, propertyId: fx.property.id, roomId: fx.room.id, channelKey: "direct",
-      checkIn: today(), checkOut: addDays(today(), 2),
-      guest: { name: "Khan, Sameer", phone: "+919812300000" }, nightlyRatePaise: 6300_00,
+      ownerId: fx.owner.id,
+      propertyId: fx.property.id,
+      roomId: fx.room.id,
+      channelKey: "direct",
+      checkIn: today(),
+      checkOut: addDays(today(), 2),
+      guest: { name: "Khan, Sameer", phone: "+919812300000" },
+      nightlyRatePaise: 6300_00,
     });
     // A guest-less / room-less booking exercises the empty-cell path.
     const ch = await prisma.channelSource.findFirst({ where: { ownerId: fx.owner.id } });
     await prisma.booking.create({
       data: {
-        ref: "SK-NOGUEST", propertyId: fx.property.id, channelId: ch!.id,
-        checkIn: today(), checkOut: addDays(today(), 1), subtotal: 0, taxAmount: 0, totalAmount: 0,
+        ref: "SK-NOGUEST",
+        propertyId: fx.property.id,
+        channelId: ch!.id,
+        checkIn: today(),
+        checkOut: addDays(today(), 1),
+        subtotal: 0,
+        taxAmount: 0,
+        totalAmount: 0,
       },
     });
 

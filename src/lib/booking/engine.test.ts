@@ -100,7 +100,11 @@ describe("createBooking", () => {
   it("upserts a returning guest by (owner, phone) and updates their name", async () => {
     await createBooking(baseInput());
     await createBooking(
-      baseInput({ checkIn: "2026-08-01", checkOut: "2026-08-02", guest: { ...guest, name: "Sameer K." } }),
+      baseInput({
+        checkIn: "2026-08-01",
+        checkOut: "2026-08-02",
+        guest: { ...guest, name: "Sameer K." },
+      }),
     );
     const guests = await prisma.guest.findMany({ where: { ownerId: fx.owner.id } });
     expect(guests).toHaveLength(1);
@@ -114,7 +118,9 @@ describe("createBooking", () => {
   });
 
   it("rejects an unknown room for the property", async () => {
-    await expect(createBooking(baseInput({ roomId: "nope" }))).rejects.toThrow(BookingValidationError);
+    await expect(createBooking(baseInput({ roomId: "nope" }))).rejects.toThrow(
+      BookingValidationError,
+    );
   });
 
   it("rejects an unknown channel", async () => {
@@ -126,7 +132,13 @@ describe("createBooking", () => {
   it("prevents double-booking the same room on overlapping nights", async () => {
     await createBooking(baseInput({ checkIn: "2026-07-01", checkOut: "2026-07-04" }));
     await expect(
-      createBooking(baseInput({ checkIn: "2026-07-03", checkOut: "2026-07-06", guest: { ...guest, phone: "+919812399999" } })),
+      createBooking(
+        baseInput({
+          checkIn: "2026-07-03",
+          checkOut: "2026-07-06",
+          guest: { ...guest, phone: "+919812399999" },
+        }),
+      ),
     ).rejects.toThrow(DoubleBookingError);
     // Exactly one booking persisted.
     expect(await prisma.booking.count()).toBe(1);
@@ -135,7 +147,11 @@ describe("createBooking", () => {
   it("allows the same room starting on a previous booking's checkout day", async () => {
     await createBooking(baseInput({ checkIn: "2026-07-01", checkOut: "2026-07-04" }));
     const b2 = await createBooking(
-      baseInput({ checkIn: "2026-07-04", checkOut: "2026-07-06", guest: { ...guest, phone: "+919812388888" } }),
+      baseInput({
+        checkIn: "2026-07-04",
+        checkOut: "2026-07-06",
+        guest: { ...guest, phone: "+919812388888" },
+      }),
     );
     expect(b2.id).toBeTruthy();
   });

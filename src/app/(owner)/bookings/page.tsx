@@ -93,30 +93,54 @@ export default async function BookingsPage({
                 return (
                   <tr key={b.id} style={{ cursor: "pointer" }}>
                     <td>
-                      <Link href={`/bookings/${b.id}`} className="guest-cell" style={{ color: "inherit" }}>
+                      <Link
+                        href={`/bookings/${b.id}`}
+                        className="guest-cell"
+                        style={{ color: "inherit" }}
+                      >
                         {g && <Avatar name={g.name} id={g.id} size={32} />}
                         <div>
                           <div className="name">
                             {g?.name}{" "}
-                            {g?.isForeign && <Icon name="globe" className="icon-sm" style={{ color: "var(--muted)", marginLeft: 2 }} />}
+                            {g?.isForeign && (
+                              <Icon
+                                name="globe"
+                                className="icon-sm"
+                                style={{ color: "var(--muted)", marginLeft: 2 }}
+                              />
+                            )}
                           </div>
                           <div className="sub">{g?.phone}</div>
                         </div>
                       </Link>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 550, fontSize: 13 }}>{shortDate(b.checkIn)} → {shortDate(b.checkOut)}</div>
-                      <div className="text-muted text-xs">{nights} night{nights > 1 ? "s" : ""} · {b.adults + b.children} guests</div>
+                      <div style={{ fontWeight: 550, fontSize: 13 }}>
+                        {shortDate(b.checkIn)} → {shortDate(b.checkOut)}
+                      </div>
+                      <div className="text-muted text-xs">
+                        {nights} night{nights > 1 ? "s" : ""} · {b.adults + b.children} guests
+                      </div>
                     </td>
                     <td>
                       <div style={{ fontWeight: 550, fontSize: 13 }}>{room?.number}</div>
                       <div className="text-muted text-xs">{room?.name}</div>
                     </td>
-                    <td><ChannelChip channelKey={b.channel.key} name={b.channel.name} /></td>
-                    <td><StatusPill state={state} /></td>
+                    <td>
+                      <ChannelChip channelKey={b.channel.key} name={b.channel.name} />
+                    </td>
+                    <td>
+                      <StatusPill state={state} />
+                    </td>
                     <td style={{ textAlign: "right" }}>
-                      <div className="money" style={{ fontWeight: 600 }}>{inr(b.totalAmount)}</div>
-                      {due > 0 && <div className="text-xs" style={{ color: "var(--st-unpaid)" }}>{inr(due)} due</div>}
+                      <div className="money" style={{ fontWeight: 600 }}>
+                        {inr(b.totalAmount)}
+                      </div>
+                      {due > 0 && (
+                        <div className="text-xs" style={{ color: "var(--st-unpaid)" }}>
+                          {inr(due)} due
+                        </div>
+                      )}
                     </td>
                     <td>
                       <Link className="icon-btn" href={`/bookings/${b.id}`}>
@@ -128,7 +152,9 @@ export default async function BookingsPage({
               })}
               {bookings.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="empty">No bookings match your filters.</td>
+                  <td colSpan={7} className="empty">
+                    No bookings match your filters.
+                  </td>
                 </tr>
               )}
             </tbody>

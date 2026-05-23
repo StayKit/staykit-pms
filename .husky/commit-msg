@@ -1,0 +1,2 @@
+# Enforce Conventional Commits (feat:, fix:, docs: …) — see CONTRIBUTING.md.
+npx --no -- commitlint --edit "$1"

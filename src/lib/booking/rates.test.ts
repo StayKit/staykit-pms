@@ -29,7 +29,9 @@ describe("rateForNight", () => {
 
   it("applies the highest-priority matching plan", () => {
     // 2026-11-05 is inside Diwali (priority 10) → 8500
-    expect(rateForNight(parseYmd("2026-11-05"), "deluxe", base, [diwali, weekendOnly])).toBe(8500_00);
+    expect(rateForNight(parseYmd("2026-11-05"), "deluxe", base, [diwali, weekendOnly])).toBe(
+      8500_00,
+    );
   });
 
   it("respects day-of-week applicability", () => {

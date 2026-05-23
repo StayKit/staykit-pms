@@ -23,7 +23,11 @@ beforeEach(() => vi.clearAllMocks());
 
 describe("OtpFlow (staff)", () => {
   it("sends a code, shows the dev code, then verifies and navigates", async () => {
-    (requestStaffOtp as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, requestId: "r1", devCode: "123456" });
+    (requestStaffOtp as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      requestId: "r1",
+      devCode: "123456",
+    });
     (verifyStaffOtp as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true });
 
     render(<OtpFlow mode="staff" successHref="/dashboard" />);
@@ -43,7 +47,10 @@ describe("OtpFlow (staff)", () => {
   });
 
   it("shows an error when the code request fails", async () => {
-    (requestStaffOtp as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, message: "No active staff account" });
+    (requestStaffOtp as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      message: "No active staff account",
+    });
     render(<OtpFlow mode="staff" successHref="/dashboard" />);
     fireEvent.change(screen.getByPlaceholderText(/98xxx/), { target: { value: "+910000000000" } });
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
@@ -52,7 +59,10 @@ describe("OtpFlow (staff)", () => {
 
   it("shows an error when verification fails, and resends on demand", async () => {
     (requestStaffOtp as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, requestId: "r1" });
-    (verifyStaffOtp as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, message: "That code didn't match" });
+    (verifyStaffOtp as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      message: "That code didn't match",
+    });
     render(<OtpFlow mode="staff" successHref="/dashboard" />);
 
     fireEvent.change(screen.getByPlaceholderText(/98xxx/), { target: { value: "+919812300000" } });
@@ -82,7 +92,11 @@ describe("OtpFlow (staff)", () => {
 
 describe("OtpFlow (guest)", () => {
   it("uses the guest actions and navigates on success", async () => {
-    (requestGuestOtp as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, requestId: "g1", devCode: "654321" });
+    (requestGuestOtp as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      requestId: "g1",
+      devCode: "654321",
+    });
     (verifyGuestOtp as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true });
     render(<OtpFlow mode="guest" successHref="/my/bookings" compact />);
 

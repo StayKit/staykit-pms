@@ -92,7 +92,10 @@ export async function createBookingAction(
 
 export async function checkInAction(bookingId: string): Promise<ActionResult> {
   const ctx = await requireContext();
-  const b = await prisma.booking.findUnique({ where: { id: bookingId }, include: { property: true } });
+  const b = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { property: true },
+  });
   if (!b) return { ok: false, message: "Booking not found" };
   assertAccess(ctx, "bookings:write", { propertyId: b.propertyId });
   await checkInBooking(bookingId, ctx.ownerId, ctx.name);
@@ -129,9 +132,14 @@ export async function sendPaymentLinkAction(bookingId: string): Promise<ActionRe
   if (!b) return { ok: false, message: "Booking not found" };
   assertAccess(ctx, "payments:read", { propertyId: b.propertyId });
   try {
-    const { shortUrl, mock } = await createPaymentLinkForBooking(bookingId, { actorName: ctx.name });
+    const { shortUrl, mock } = await createPaymentLinkForBooking(bookingId, {
+      actorName: ctx.name,
+    });
     revalidatePath(`/bookings/${bookingId}`);
-    return { ok: true, message: mock ? `Demo link created: ${shortUrl}` : `Link sent: ${shortUrl}` };
+    return {
+      ok: true,
+      message: mock ? `Demo link created: ${shortUrl}` : `Link sent: ${shortUrl}`,
+    };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "Could not create link" };
   }

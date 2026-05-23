@@ -55,12 +55,24 @@ describe("sourceMix", () => {
     await addRoom(fx.property.id, fx.roomType.id, "Room 2", "102");
     const r2 = await addRoom(fx.property.id, fx.roomType.id, "Room 3", "103");
     await createBooking({
-      ownerId: fx.owner.id, propertyId: fx.property.id, roomId: fx.room.id, channelKey: "direct",
-      checkIn: today(), checkOut: addDays(today(), 1), guest: { name: "A", phone: "+919800002221" }, nightlyRatePaise: 5000_00,
+      ownerId: fx.owner.id,
+      propertyId: fx.property.id,
+      roomId: fx.room.id,
+      channelKey: "direct",
+      checkIn: today(),
+      checkOut: addDays(today(), 1),
+      guest: { name: "A", phone: "+919800002221" },
+      nightlyRatePaise: 5000_00,
     });
     await createBooking({
-      ownerId: fx.owner.id, propertyId: fx.property.id, roomId: r2.id, channelKey: "airbnb",
-      checkIn: today(), checkOut: addDays(today(), 1), guest: { name: "B", phone: "+919800002222" }, nightlyRatePaise: 5000_00,
+      ownerId: fx.owner.id,
+      propertyId: fx.property.id,
+      roomId: r2.id,
+      channelKey: "airbnb",
+      checkIn: today(),
+      checkOut: addDays(today(), 1),
+      guest: { name: "B", phone: "+919800002222" },
+      nightlyRatePaise: 5000_00,
     });
     const mix = await sourceMix(fx.owner.id, from(), to());
     const total = mix.reduce((s, m) => s + m.count, 0);

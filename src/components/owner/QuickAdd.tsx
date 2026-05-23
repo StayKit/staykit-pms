@@ -64,7 +64,8 @@ export function QuickAdd({
         roomId: prefillRoom ?? f.roomId,
         checkIn: prefillDate ?? f.checkIn,
         nightlyRateRupees:
-          rooms.find((r) => r.id === (prefillRoom ?? f.roomId))?.baseRateRupees ?? f.nightlyRateRupees,
+          rooms.find((r) => r.id === (prefillRoom ?? f.roomId))?.baseRateRupees ??
+          f.nightlyRateRupees,
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,9 +85,7 @@ export function QuickAdd({
 
   const nights = Math.max(
     1,
-    Math.round(
-      (new Date(form.checkOut).getTime() - new Date(form.checkIn).getTime()) / 86_400_000,
-    ),
+    Math.round((new Date(form.checkOut).getTime() - new Date(form.checkIn).getTime()) / 86_400_000),
   );
   const subtotal = form.nightlyRateRupees * nights;
   const gst = Math.round(subtotal * 0.05);
@@ -153,22 +152,40 @@ export function QuickAdd({
             <div className="field-row">
               <div className="field">
                 <label>Check-in</label>
-                <input type="date" value={form.checkIn} onChange={(e) => set("checkIn", e.target.value)} />
+                <input
+                  type="date"
+                  value={form.checkIn}
+                  onChange={(e) => set("checkIn", e.target.value)}
+                />
               </div>
               <div className="field">
                 <label>Check-out</label>
-                <input type="date" value={form.checkOut} onChange={(e) => set("checkOut", e.target.value)} />
+                <input
+                  type="date"
+                  value={form.checkOut}
+                  onChange={(e) => set("checkOut", e.target.value)}
+                />
               </div>
             </div>
 
             <div className="field-row thirds">
               <div className="field">
                 <label>Adults</label>
-                <input type="number" min={1} value={form.adults} onChange={(e) => set("adults", +e.target.value)} />
+                <input
+                  type="number"
+                  min={1}
+                  value={form.adults}
+                  onChange={(e) => set("adults", +e.target.value)}
+                />
               </div>
               <div className="field">
                 <label>Children</label>
-                <input type="number" min={0} value={form.children} onChange={(e) => set("children", +e.target.value)} />
+                <input
+                  type="number"
+                  min={0}
+                  value={form.children}
+                  onChange={(e) => set("children", +e.target.value)}
+                />
               </div>
               <div className="field">
                 <label>Rate / night (₹)</label>

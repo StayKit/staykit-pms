@@ -59,8 +59,7 @@ export function bbClass(s: DisplayState): string {
 
 export function StatusPill({ state, children }: { state: DisplayState; children?: ReactNode }) {
   // Map cancelled/noshow to existing pill styles.
-  const cls =
-    state === "cancelled" ? "checkedout" : state === "noshow" ? "unpaid" : state;
+  const cls = state === "cancelled" ? "checkedout" : state === "noshow" ? "unpaid" : state;
   return (
     <span className={"pill pill-" + cls}>
       <span className="swatch" />
@@ -69,13 +68,7 @@ export function StatusPill({ state, children }: { state: DisplayState; children?
   );
 }
 
-export function ChannelChip({
-  channelKey,
-  name,
-}: {
-  channelKey: string;
-  name: string;
-}) {
+export function ChannelChip({ channelKey, name }: { channelKey: string; name: string }) {
   return <span className={"channel-chip " + channelKey}>{name}</span>;
 }
 

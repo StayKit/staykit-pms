@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+next-env.d.ts
+
+# Reference prototype — not part of the shipped app
+design

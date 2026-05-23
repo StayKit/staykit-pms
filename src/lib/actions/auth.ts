@@ -36,7 +36,8 @@ export async function requestStaffOtp(phoneRaw: string): Promise<OtpRequestResul
 export async function verifyStaffOtp(requestId: string, code: string): Promise<OtpRequestResult> {
   try {
     const res = await verifyOtp(requestId, code);
-    if (!res.ok) return { ok: false, message: "That code didn't match — please try again or resend." };
+    if (!res.ok)
+      return { ok: false, message: "That code didn't match — please try again or resend." };
     const user = await prisma.user.findUnique({ where: { phone: res.contact } });
     if (!user) return { ok: false, message: "Account not found." };
     await createStaffSession(user.id);
@@ -60,7 +61,8 @@ export async function requestGuestOtp(phoneRaw: string): Promise<OtpRequestResul
 export async function verifyGuestOtp(requestId: string, code: string): Promise<OtpRequestResult> {
   try {
     const res = await verifyOtp(requestId, code);
-    if (!res.ok) return { ok: false, message: "That code didn't match — please try again or resend." };
+    if (!res.ok)
+      return { ok: false, message: "That code didn't match — please try again or resend." };
     await createGuestSession(res.contact);
     return { ok: true };
   } catch (e) {

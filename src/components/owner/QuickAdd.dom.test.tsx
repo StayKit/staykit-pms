@@ -18,7 +18,10 @@ const props = {
     { id: "r1", label: "101 — Hibiscus (Deluxe)", baseRateRupees: 6300 },
     { id: "r2", label: "102 — Cardamom (Deluxe)", baseRateRupees: 4200 },
   ],
-  channels: [{ key: "direct", name: "Direct" }, { key: "airbnb", name: "Airbnb" }],
+  channels: [
+    { key: "direct", name: "Direct" },
+    { key: "airbnb", name: "Airbnb" },
+  ],
 };
 
 beforeEach(() => {
@@ -29,7 +32,9 @@ beforeEach(() => {
 });
 
 function fillGuest() {
-  fireEvent.change(screen.getByPlaceholderText("+91 98xxx xxxxx"), { target: { value: "+919812300000" } });
+  fireEvent.change(screen.getByPlaceholderText("+91 98xxx xxxxx"), {
+    target: { value: "+919812300000" },
+  });
   fireEvent.change(screen.getByPlaceholderText("Full name"), { target: { value: "Sameer" } });
 }
 
@@ -52,7 +57,12 @@ describe("QuickAdd", () => {
 
     await waitFor(() => expect(mockCreate).toHaveBeenCalled());
     const arg = mockCreate.mock.calls[0][0];
-    expect(arg).toMatchObject({ propertyId: "p1", guestName: "Sameer", guestPhone: "+919812300000", channelKey: "airbnb" });
+    expect(arg).toMatchObject({
+      propertyId: "p1",
+      guestName: "Sameer",
+      guestPhone: "+919812300000",
+      channelKey: "airbnb",
+    });
     await waitFor(() => expect(state.push).toHaveBeenCalledWith("?"));
     expect(state.refresh).toHaveBeenCalled();
   });
@@ -71,7 +81,9 @@ describe("QuickAdd", () => {
   it("prefills the room and date from the URL", () => {
     state.search = "new=1&room=r2&date=2026-07-01";
     render(<QuickAdd {...props} />);
-    expect((screen.getByDisplayValue("102 — Cardamom (Deluxe)") as HTMLSelectElement).value).toBe("r2");
+    expect((screen.getByDisplayValue("102 — Cardamom (Deluxe)") as HTMLSelectElement).value).toBe(
+      "r2",
+    );
   });
 
   it("closes via the Cancel button", () => {
@@ -84,6 +96,6 @@ describe("QuickAdd", () => {
     render(<QuickAdd {...props} />);
     const select = screen.getByDisplayValue("101 — Hibiscus (Deluxe)") as HTMLSelectElement;
     fireEvent.change(select, { target: { value: "r2" } });
-    expect((screen.getByDisplayValue("4200") as HTMLInputElement)).toBeTruthy();
+    expect(screen.getByDisplayValue("4200") as HTMLInputElement).toBeTruthy();
   });
 });

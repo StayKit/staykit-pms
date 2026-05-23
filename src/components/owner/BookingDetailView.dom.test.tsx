@@ -6,7 +6,9 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));
 vi.mock("@/lib/actions/bookings", () => ({
   checkInAction: vi.fn().mockResolvedValue({ ok: true }),
   checkOutAction: vi.fn().mockResolvedValue({ ok: true }),
-  sendPaymentLinkAction: vi.fn().mockResolvedValue({ ok: true, message: "Link sent: http://x/pay/1" }),
+  sendPaymentLinkAction: vi
+    .fn()
+    .mockResolvedValue({ ok: true, message: "Link sent: http://x/pay/1" }),
   markPaidAction: vi.fn().mockResolvedValue({ ok: true }),
   cancelAction: vi.fn().mockResolvedValue({ ok: true }),
 }));
@@ -28,13 +30,34 @@ function makeData(state: DisplayState, over: Partial<BookingDetailData> = {}): B
     state,
     room: { number: "103", name: "Hibiscus" },
     guest: {
-      id: "g1", name: "Sameer Khan", city: "Bengaluru", phone: "+91...", email: "s@k.in",
-      isForeign: false, idType: "AADHAAR", idLast4: "8821", stays: 3,
+      id: "g1",
+      name: "Sameer Khan",
+      city: "Bengaluru",
+      phone: "+91...",
+      email: "s@k.in",
+      isForeign: false,
+      idType: "AADHAAR",
+      idLast4: "8821",
+      stays: 3,
     },
-    checkIn: "12 Jun", checkOut: "15 Jun", checkInTime: "14:00", checkOutTime: "11:00",
-    nights: 3, adults: 2, children: 0,
+    checkIn: "12 Jun",
+    checkOut: "15 Jun",
+    checkInTime: "14:00",
+    checkOutTime: "11:00",
+    nights: 3,
+    adults: 2,
+    children: 0,
     channel: { key: "direct", name: "Direct" },
-    money: { subtotal: "₹ 18,000", tax: "₹ 900", total: "₹ 18,900", paid: "₹ 9,450", due: "₹ 9,450", dueRaw: 945000, taxLabel: "5% GST", nightly: "₹ 6,000" },
+    money: {
+      subtotal: "₹ 18,000",
+      tax: "₹ 900",
+      total: "₹ 18,900",
+      paid: "₹ 9,450",
+      due: "₹ 9,450",
+      dueRaw: 945000,
+      taxLabel: "5% GST",
+      nightly: "₹ 6,000",
+    },
     payments: [
       { icon: "send", tone: "", title: "Link created", sub: "yesterday" },
       { icon: "check", tone: "ok", title: "received", sub: "today" },
@@ -59,7 +82,10 @@ beforeEach(() => {
   // Re-apply implementations (the global afterEach restores mocks between tests).
   (checkInAction as unknown as M).mockResolvedValue({ ok: true });
   (checkOutAction as unknown as M).mockResolvedValue({ ok: true });
-  (sendPaymentLinkAction as unknown as M).mockResolvedValue({ ok: true, message: "Link sent: http://x/pay/1" });
+  (sendPaymentLinkAction as unknown as M).mockResolvedValue({
+    ok: true,
+    message: "Link sent: http://x/pay/1",
+  });
   (markPaidAction as unknown as M).mockResolvedValue({ ok: true });
   (cancelAction as unknown as M).mockResolvedValue({ ok: true });
 });

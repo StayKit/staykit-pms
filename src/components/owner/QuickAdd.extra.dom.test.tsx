@@ -19,7 +19,9 @@ beforeEach(() => {
 });
 
 function fillGuest() {
-  fireEvent.change(screen.getByPlaceholderText("+91 98xxx xxxxx"), { target: { value: "+919812300000" } });
+  fireEvent.change(screen.getByPlaceholderText("+91 98xxx xxxxx"), {
+    target: { value: "+919812300000" },
+  });
   fireEvent.change(screen.getByPlaceholderText("Full name"), { target: { value: "Sameer" } });
 }
 
@@ -34,7 +36,9 @@ describe("QuickAdd extra interactions", () => {
     const numbers = container.querySelectorAll('input[type="number"]');
     fireEvent.change(numbers[0], { target: { value: "3" } }); // adults
     fireEvent.change(numbers[2], { target: { value: "7000" } }); // rate/night
-    fireEvent.change(screen.getByPlaceholderText(/special requests/), { target: { value: "Quiet room please" } });
+    fireEvent.change(screen.getByPlaceholderText(/special requests/), {
+      target: { value: "Quiet room please" },
+    });
     expect((numbers[0] as HTMLInputElement).value).toBe("3");
     fireEvent.click(container.querySelector(".scrim")!); // scrim closes the modal
     expect(state.push).toHaveBeenCalledWith("?");

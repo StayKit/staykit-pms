@@ -14,7 +14,10 @@ export default async function GuestBookings() {
   if (!session) redirect("/my");
 
   const bookings = await prisma.booking.findMany({
-    where: { guests: { some: { guest: { phone: session.phone } } }, status: { notIn: ["CANCELLED"] } },
+    where: {
+      guests: { some: { guest: { phone: session.phone } } },
+      status: { notIn: ["CANCELLED"] },
+    },
     include: { property: true, rooms: { include: { room: true } } },
     orderBy: { checkIn: "desc" },
   });
@@ -22,7 +25,14 @@ export default async function GuestBookings() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
       <div style={{ maxWidth: 460, margin: "0 auto", padding: "24px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 18,
+          }}
+        >
           <div>
             <div style={{ fontWeight: 600, fontSize: 18 }}>Your bookings</div>
             <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{session.phone}</div>
@@ -42,16 +52,30 @@ export default async function GuestBookings() {
               <Link
                 key={b.id}
                 href={`/my/bookings/${b.id}`}
-                style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, padding: 14, boxShadow: "var(--shadow-1)", display: "block" }}
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--line)",
+                  borderRadius: 14,
+                  padding: 14,
+                  boxShadow: "var(--shadow-1)",
+                  display: "block",
+                }}
               >
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{b.property.name}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{room ? `${room.name} · Room ${room.number}` : ""}</div>
-                <div style={{ fontSize: 12.5, marginTop: 8 }}>{shortDate(b.checkIn)} – {shortDate(b.checkOut)}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                  {room ? `${room.name} · Room ${room.number}` : ""}
+                </div>
+                <div style={{ fontSize: 12.5, marginTop: 8 }}>
+                  {shortDate(b.checkIn)} – {shortDate(b.checkOut)}
+                </div>
                 <div style={{ display: "flex", alignItems: "center", marginTop: 10, gap: 6 }}>
                   <StatusPill state={state} />
                 </div>
                 {due > 0 && (
-                  <div className="btn btn-accent" style={{ width: "100%", justifyContent: "center", marginTop: 12 }}>
+                  <div
+                    className="btn btn-accent"
+                    style={{ width: "100%", justifyContent: "center", marginTop: 12 }}
+                  >
                     Pay {inr(due)}
                   </div>
                 )}

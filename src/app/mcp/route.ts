@@ -28,7 +28,10 @@ function rpcResult(id: unknown, result: unknown) {
   return NextResponse.json({ jsonrpc: "2.0", id: id ?? null, result });
 }
 function rpcError(id: unknown, code: number, message: string, status = 200) {
-  return NextResponse.json({ jsonrpc: "2.0", id: id ?? null, error: { code, message } }, { status });
+  return NextResponse.json(
+    { jsonrpc: "2.0", id: id ?? null, error: { code, message } },
+    { status },
+  );
 }
 
 function unauthorized() {

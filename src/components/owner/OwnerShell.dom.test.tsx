@@ -9,7 +9,9 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("next/link", () => ({
   default: ({ href, children, ...p }: { href: string; children: React.ReactNode }) => (
-    <a href={String(href)} {...p}>{children}</a>
+    <a href={String(href)} {...p}>
+      {children}
+    </a>
   ),
 }));
 vi.mock("@/lib/actions/bookings", () => ({ createBookingAction: vi.fn() }));
@@ -49,7 +51,11 @@ describe("OwnerShell", () => {
   it("shows the demo banner only in demo mode", () => {
     const { rerender } = render(<OwnerShell {...props}>x</OwnerShell>);
     expect(screen.getByText(/Demo mode/)).toBeTruthy();
-    rerender(<OwnerShell {...props} demo={false}>x</OwnerShell>);
+    rerender(
+      <OwnerShell {...props} demo={false}>
+        x
+      </OwnerShell>,
+    );
     expect(screen.queryByText(/Demo mode/)).toBeNull();
   });
 

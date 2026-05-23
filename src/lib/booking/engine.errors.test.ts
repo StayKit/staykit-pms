@@ -20,7 +20,12 @@ const tx = prisma.$transaction as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  room.mockResolvedValue({ id: "r1", roomTypeId: "t1", roomType: { baseRate: 6300_00 }, property: { gstin: null } });
+  room.mockResolvedValue({
+    id: "r1",
+    roomTypeId: "t1",
+    roomType: { baseRate: 6300_00 },
+    property: { gstin: null },
+  });
   channel.mockResolvedValue({ id: "c1" });
 });
 
@@ -29,9 +34,14 @@ describe("createBooking error propagation", () => {
     tx.mockRejectedValue(new Error("boom"));
     await expect(
       createBooking({
-        ownerId: "o1", propertyId: "p1", roomId: "r1", channelKey: "direct",
-        checkIn: "2026-07-01", checkOut: "2026-07-03",
-        guest: { name: "S", phone: "+91" }, nightlyRatePaise: 6300_00,
+        ownerId: "o1",
+        propertyId: "p1",
+        roomId: "r1",
+        channelKey: "direct",
+        checkIn: "2026-07-01",
+        checkOut: "2026-07-03",
+        guest: { name: "S", phone: "+91" },
+        nightlyRatePaise: 6300_00,
       }),
     ).rejects.toThrow("boom");
   });
@@ -40,9 +50,14 @@ describe("createBooking error propagation", () => {
     tx.mockRejectedValue(new Error("boom"));
     await expect(
       createBooking({
-        ownerId: "o1", propertyId: "p1", roomId: "r1", channelKey: "direct",
-        checkIn: "2026-07-01", checkOut: "2026-07-03",
-        guest: { name: "S", phone: "+91" }, nightlyRatePaise: 6300_00,
+        ownerId: "o1",
+        propertyId: "p1",
+        roomId: "r1",
+        channelKey: "direct",
+        checkIn: "2026-07-01",
+        checkOut: "2026-07-03",
+        guest: { name: "S", phone: "+91" },
+        nightlyRatePaise: 6300_00,
       }),
     ).rejects.not.toBeInstanceOf(DoubleBookingError);
   });

@@ -23,7 +23,12 @@ beforeEach(async () => {
   await resetDb();
   fx = await seedBasic({ gstin: null });
   mockCtx.mockResolvedValue({
-    ownerId: fx.owner.id, userId: fx.user.id, role: "OWNER", name: "Priya", propertyScopes: [], demo: true,
+    ownerId: fx.owner.id,
+    userId: fx.user.id,
+    role: "OWNER",
+    name: "Priya",
+    propertyScopes: [],
+    demo: true,
   });
 });
 
@@ -70,7 +75,13 @@ describe("createBookingAction", () => {
 
   it("returns a friendly error on double-booking", async () => {
     await createBookingAction(input());
-    const res = await createBookingAction(input({ guestPhone: "+919812399999", checkIn: ymd(addDays(today(), 1)), checkOut: ymd(addDays(today(), 3)) }));
+    const res = await createBookingAction(
+      input({
+        guestPhone: "+919812399999",
+        checkIn: ymd(addDays(today(), 1)),
+        checkOut: ymd(addDays(today(), 3)),
+      }),
+    );
     expect(res.ok).toBe(false);
     expect(res.message).toMatch(/already booked/i);
   });
@@ -153,7 +164,13 @@ describe("booking lifecycle actions", () => {
   it("reports a live (non-mock) link when Razorpay is configured", async () => {
     vi.stubEnv("RAZORPAY_KEY_ID_TEST", "rzp_test_x");
     vi.stubEnv("RAZORPAY_KEY_SECRET_TEST", "secret");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "plink_live", short_url: "https://rzp.io/i/live" }) }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ id: "plink_live", short_url: "https://rzp.io/i/live" }),
+      }),
+    );
     const id = await make();
     const res = await sendPaymentLinkAction(id);
     expect(res.ok).toBe(true);

@@ -26,8 +26,21 @@ export async function GET() {
   });
 
   const header = [
-    "ref", "property", "guest", "phone", "checkIn", "checkOut", "nights",
-    "room", "channel", "status", "subtotal", "gst", "total", "paid", "due",
+    "ref",
+    "property",
+    "guest",
+    "phone",
+    "checkIn",
+    "checkOut",
+    "nights",
+    "room",
+    "channel",
+    "status",
+    "subtotal",
+    "gst",
+    "total",
+    "paid",
+    "due",
   ];
   const rows = bookings.map((b) => {
     const g = b.guests[0]?.guest;

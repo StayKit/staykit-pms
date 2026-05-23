@@ -83,6 +83,11 @@ export async function seedBasic(opts?: { gstin?: string | null }): Promise<Fixtu
   return { owner, user, property, roomType, room };
 }
 
-export async function addRoom(propertyId: string, roomTypeId: string, name: string, number: string) {
+export async function addRoom(
+  propertyId: string,
+  roomTypeId: string,
+  name: string,
+  number: string,
+) {
   return prisma.room.create({ data: { propertyId, roomTypeId, name, number } });
 }

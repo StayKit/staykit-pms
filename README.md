@@ -41,6 +41,7 @@ npm run dev                   # http://localhost:3000
 ```
 
 Open:
+
 - **`/`** — marketing landing page
 - **`/dashboard`** — the owner app (browsable in demo mode without login)
 - **`/my`** — the guest portal (OTP; the dev code is printed in the terminal)
@@ -65,16 +66,16 @@ Prisma + SQLite (WAL) · in-process Job worker · Litestream → S3
 
 Key modules (`src/lib/`):
 
-| Path | Responsibility |
-|---|---|
-| `booking/engine.ts` | Transactional create/check-in/out/cancel; **double-booking prevention** |
-| `booking/availability.ts` · `rates.ts` | Pure availability + rate-plan resolution (unit-tested) |
-| `tax.ts` | GST computation per Notification 15/2025 (unit-tested) |
-| `payments/` | Razorpay payment links, refunds, webhook signature verification |
-| `notify/` | Template engine + provider interface (MSG91 / Resend, console fallback) |
-| `mcp/` | Tool catalog + handlers + OAuth bearer resolution |
-| `rbac/policy.ts` | Role → permission map; OAuth scopes map 1:1 |
-| `auth/` | OTP issuance/verification + session cookies |
+| Path                                   | Responsibility                                                          |
+| -------------------------------------- | ----------------------------------------------------------------------- |
+| `booking/engine.ts`                    | Transactional create/check-in/out/cancel; **double-booking prevention** |
+| `booking/availability.ts` · `rates.ts` | Pure availability + rate-plan resolution (unit-tested)                  |
+| `tax.ts`                               | GST computation per Notification 15/2025 (unit-tested)                  |
+| `payments/`                            | Razorpay payment links, refunds, webhook signature verification         |
+| `notify/`                              | Template engine + provider interface (MSG91 / Resend, console fallback) |
+| `mcp/`                                 | Tool catalog + handlers + OAuth bearer resolution                       |
+| `rbac/policy.ts`                       | Role → permission map; OAuth scopes map 1:1                             |
+| `auth/`                                | OTP issuance/verification + session cookies                             |
 
 ## The MCP server
 
@@ -90,14 +91,14 @@ Tools (RBAC-enforced, scopes map 1:1 to permissions): `list_properties`, `get_pr
 
 ## Scripts
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start the dev server |
-| `npm run build` / `npm start` | Production build / serve |
-| `npm run setup` | `prisma generate` + `db push` + seed |
-| `npm run db:reset` | Wipe & re-seed the demo data |
-| `npm test` | Run the Vitest unit suite |
-| `npm run typecheck` | `tsc --noEmit` |
+| Command                       | What it does                         |
+| ----------------------------- | ------------------------------------ |
+| `npm run dev`                 | Start the dev server                 |
+| `npm run build` / `npm start` | Production build / serve             |
+| `npm run setup`               | `prisma generate` + `db push` + seed |
+| `npm run db:reset`            | Wipe & re-seed the demo data         |
+| `npm test`                    | Run the Vitest unit suite            |
+| `npm run typecheck`           | `tsc --noEmit`                       |
 
 ## Compliance, baked in
 

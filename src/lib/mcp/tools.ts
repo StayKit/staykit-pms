@@ -101,14 +101,22 @@ export const TOOLS: ToolDef[] = [
       const from = parseYmd(String(args.from));
       const to = parseYmd(String(args.to));
       const rooms = await prisma.room.findMany({
-        where: { propertyId: String(args.propertyId), property: { ownerId: ctx.ownerId }, active: true },
+        where: {
+          propertyId: String(args.propertyId),
+          property: { ownerId: ctx.ownerId },
+          active: true,
+        },
       });
       const occupied = await prisma.bookingRoom.findMany({
         where: { room: { propertyId: String(args.propertyId) }, date: { gte: from, lt: to } },
         select: { roomId: true, date: true },
       });
       const blocks = await prisma.maintenanceBlock.findMany({
-        where: { propertyId: String(args.propertyId), startDate: { lt: to }, endDate: { gt: from } },
+        where: {
+          propertyId: String(args.propertyId),
+          startDate: { lt: to },
+          endDate: { gt: from },
+        },
       });
       const avail = computeAvailability(rooms, occupied, blocks, from, to);
       return rooms
@@ -145,8 +153,13 @@ export const TOOLS: ToolDef[] = [
         take: 50,
         orderBy: { checkIn: "asc" },
         select: {
-          id: true, ref: true, status: true, checkIn: true, checkOut: true,
-          totalAmount: true, amountPaid: true,
+          id: true,
+          ref: true,
+          status: true,
+          checkIn: true,
+          checkOut: true,
+          totalAmount: true,
+          amountPaid: true,
         },
       });
     },
@@ -162,7 +175,11 @@ export const TOOLS: ToolDef[] = [
       const idOrRef = String(args.idOrRef);
       return prisma.booking.findFirst({
         where: { property: { ownerId: ctx.ownerId }, OR: [{ id: idOrRef }, { ref: idOrRef }] },
-        include: { guests: { include: { guest: true } }, rooms: { include: { room: true } }, payments: true },
+        include: {
+          guests: { include: { guest: true } },
+          rooms: { include: { room: true } },
+          payments: true,
+        },
       });
     },
   },
@@ -170,8 +187,16 @@ export const TOOLS: ToolDef[] = [
     name: "get_kpis",
     scope: "reports:read",
     description: "Occupancy, ADR and RevPAR for a date range.",
-    inputSchema: z.object({ from: z.string().optional(), to: z.string().optional(), propertyId: z.string().optional() }),
-    jsonSchema: obj({ from: { type: "string" }, to: { type: "string" }, propertyId: { type: "string" } }),
+    inputSchema: z.object({
+      from: z.string().optional(),
+      to: z.string().optional(),
+      propertyId: z.string().optional(),
+    }),
+    jsonSchema: obj({
+      from: { type: "string" },
+      to: { type: "string" },
+      propertyId: { type: "string" },
+    }),
     async run(args, ctx) {
       assertScope(ctx, "reports:read");
       const from = args.from ? parseYmd(String(args.from)) : addDays(today(), -7);
@@ -189,7 +214,10 @@ export const TOOLS: ToolDef[] = [
       assertScope(ctx, "bookings:read");
       const q = String(args.query);
       const guests = await prisma.guest.findMany({
-        where: { ownerId: ctx.ownerId, OR: [{ name: { contains: q } }, { phone: { contains: q } }] },
+        where: {
+          ownerId: ctx.ownerId,
+          OR: [{ name: { contains: q } }, { phone: { contains: q } }],
+        },
         take: 20,
       });
       return guests.map((g) => ({
@@ -220,10 +248,16 @@ export const TOOLS: ToolDef[] = [
     }),
     jsonSchema: obj(
       {
-        propertyId: { type: "string" }, roomId: { type: "string" },
-        checkIn: { type: "string" }, checkOut: { type: "string" },
-        channel: { type: "string" }, guestName: { type: "string" }, guestPhone: { type: "string" },
-        guestEmail: { type: "string" }, adults: { type: "number" }, children: { type: "number" },
+        propertyId: { type: "string" },
+        roomId: { type: "string" },
+        checkIn: { type: "string" },
+        checkOut: { type: "string" },
+        channel: { type: "string" },
+        guestName: { type: "string" },
+        guestPhone: { type: "string" },
+        guestEmail: { type: "string" },
+        adults: { type: "number" },
+        children: { type: "number" },
         ratePaise: { type: "number" },
       },
       ["propertyId", "roomId", "checkIn", "checkOut", "channel", "guestName", "guestPhone"],
@@ -237,7 +271,11 @@ export const TOOLS: ToolDef[] = [
         channelKey: String(args.channel),
         checkIn: String(args.checkIn),
         checkOut: String(args.checkOut),
-        guest: { name: String(args.guestName), phone: String(args.guestPhone), email: (args.guestEmail as string) ?? null },
+        guest: {
+          name: String(args.guestName),
+          phone: String(args.guestPhone),
+          email: (args.guestEmail as string) ?? null,
+        },
         adults: args.adults as number | undefined,
         children: args.children as number | undefined,
         nightlyRatePaise: args.ratePaise as number | undefined,
@@ -254,11 +292,19 @@ export const TOOLS: ToolDef[] = [
     scope: "bookings:cancel",
     description: "Cancel a booking with a reason (releases the room nights).",
     inputSchema: z.object({ bookingId: z.string(), reason: z.string() }),
-    jsonSchema: obj({ bookingId: { type: "string" }, reason: { type: "string" } }, ["bookingId", "reason"]),
+    jsonSchema: obj({ bookingId: { type: "string" }, reason: { type: "string" } }, [
+      "bookingId",
+      "reason",
+    ]),
     async run(args, ctx) {
       assertScope(ctx, "bookings:cancel");
       await ownsBooking(ctx, String(args.bookingId));
-      const b = await cancelBooking(String(args.bookingId), ctx.ownerId, String(args.reason), "Claude (AI)");
+      const b = await cancelBooking(
+        String(args.bookingId),
+        ctx.ownerId,
+        String(args.reason),
+        "Claude (AI)",
+      );
       return { id: b.id, status: b.status };
     },
   },
@@ -301,7 +347,12 @@ export const TOOLS: ToolDef[] = [
         select: { ref: true, totalAmount: true, amountPaid: true, payments: true, refunds: true },
       });
       if (!b) throw new Error("Booking not found");
-      return { ref: b.ref, total: b.totalAmount, paid: b.amountPaid, due: b.totalAmount - b.amountPaid };
+      return {
+        ref: b.ref,
+        total: b.totalAmount,
+        paid: b.amountPaid,
+        due: b.totalAmount - b.amountPaid,
+      };
     },
   },
   {
@@ -309,7 +360,9 @@ export const TOOLS: ToolDef[] = [
     scope: "payments:read",
     description: "Create and send a Razorpay payment link (side effect: SMS/email).",
     inputSchema: z.object({ bookingId: z.string(), amountPaise: z.number().optional() }),
-    jsonSchema: obj({ bookingId: { type: "string" }, amountPaise: { type: "number" } }, ["bookingId"]),
+    jsonSchema: obj({ bookingId: { type: "string" }, amountPaise: { type: "number" } }, [
+      "bookingId",
+    ]),
     async run(args, ctx) {
       assertScope(ctx, "payments:read");
       await ownsBooking(ctx, String(args.bookingId));
@@ -326,15 +379,26 @@ export const TOOLS: ToolDef[] = [
     scope: "payments:refund",
     description: "Initiate a refund. Requires human-in-the-loop confirmation.",
     requiresApproval: true,
-    inputSchema: z.object({ bookingId: z.string(), amountPaise: z.number(), confirm: z.boolean().optional() }),
+    inputSchema: z.object({
+      bookingId: z.string(),
+      amountPaise: z.number(),
+      confirm: z.boolean().optional(),
+    }),
     jsonSchema: obj(
-      { bookingId: { type: "string" }, amountPaise: { type: "number" }, confirm: { type: "boolean" } },
+      {
+        bookingId: { type: "string" },
+        amountPaise: { type: "number" },
+        confirm: { type: "boolean" },
+      },
       ["bookingId", "amountPaise"],
     ),
     async run(args, ctx) {
       assertScope(ctx, "payments:refund");
       if (!args.confirm) {
-        return { needsConfirmation: true, message: "Re-call with confirm=true to process this refund." };
+        return {
+          needsConfirmation: true,
+          message: "Re-call with confirm=true to process this refund.",
+        };
       }
       // Recorded but not auto-executed against Razorpay from the AI path in v1.
       return { status: "PENDING_OWNER_APPROVAL" };

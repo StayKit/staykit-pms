@@ -10,7 +10,13 @@ const rooms = [
 describe("computeAvailability", () => {
   it("marks a room unavailable when a requested night is occupied", () => {
     const occupied = [{ roomId: "r1", date: parseYmd("2026-06-12") }];
-    const res = computeAvailability(rooms, occupied, [], parseYmd("2026-06-12"), parseYmd("2026-06-14"));
+    const res = computeAvailability(
+      rooms,
+      occupied,
+      [],
+      parseYmd("2026-06-12"),
+      parseYmd("2026-06-14"),
+    );
     expect(res.find((r) => r.roomId === "r1")?.available).toBe(false);
     expect(res.find((r) => r.roomId === "r2")?.available).toBe(true);
   });
@@ -18,13 +24,27 @@ describe("computeAvailability", () => {
   it("treats checkout day as free (nights are exclusive of checkout)", () => {
     // r1 occupied on the 12th only; a stay starting the 13th must be free.
     const occupied = [{ roomId: "r1", date: parseYmd("2026-06-12") }];
-    const res = computeAvailability(rooms, occupied, [], parseYmd("2026-06-13"), parseYmd("2026-06-14"));
+    const res = computeAvailability(
+      rooms,
+      occupied,
+      [],
+      parseYmd("2026-06-13"),
+      parseYmd("2026-06-14"),
+    );
     expect(res.find((r) => r.roomId === "r1")?.available).toBe(true);
   });
 
   it("blocks nights inside a maintenance range", () => {
-    const blocks = [{ roomId: "r2", startDate: parseYmd("2026-06-12"), endDate: parseYmd("2026-06-15") }];
-    const res = computeAvailability(rooms, [], blocks, parseYmd("2026-06-14"), parseYmd("2026-06-16"));
+    const blocks = [
+      { roomId: "r2", startDate: parseYmd("2026-06-12"), endDate: parseYmd("2026-06-15") },
+    ];
+    const res = computeAvailability(
+      rooms,
+      [],
+      blocks,
+      parseYmd("2026-06-14"),
+      parseYmd("2026-06-16"),
+    );
     expect(res.find((r) => r.roomId === "r2")?.available).toBe(false);
   });
 });

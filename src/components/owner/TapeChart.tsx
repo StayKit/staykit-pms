@@ -90,8 +90,12 @@ export function TapeChart({
           <div className="sub">Tap a cell to book. Click a bar to open the booking.</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn"><Icon name="filter" className="icon-sm" /> Filters</button>
-          <button className="btn"><Icon name="lock" className="icon-sm" /> Block dates</button>
+          <button className="btn">
+            <Icon name="filter" className="icon-sm" /> Filters
+          </button>
+          <button className="btn">
+            <Icon name="lock" className="icon-sm" /> Block dates
+          </button>
         </div>
       </div>
 
@@ -112,7 +116,15 @@ export function TapeChart({
             <button className="icon-btn" title="Previous" onClick={() => setOffset((o) => o - 1)}>
               <Icon name="chevron-left" className="icon-sm" />
             </button>
-            <div style={{ fontSize: 13.5, fontWeight: 550, padding: "0 8px", minWidth: 180, textAlign: "center" }}>
+            <div
+              style={{
+                fontSize: 13.5,
+                fontWeight: 550,
+                padding: "0 8px",
+                minWidth: 180,
+                textAlign: "center",
+              }}
+            >
               {fmt(dates[0])} – {fmt(dates[dates.length - 1], true)}
             </div>
             <button className="icon-btn" title="Next" onClick={() => setOffset((o) => o + 1)}>
@@ -120,19 +132,38 @@ export function TapeChart({
             </button>
             <div style={{ width: 8 }} />
             <div className="seg">
-              <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Week</button>
-              <button className={view === "14" ? "active" : ""} onClick={() => setView("14")}>14 days</button>
-              <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}>Month</button>
+              <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>
+                Week
+              </button>
+              <button className={view === "14" ? "active" : ""} onClick={() => setView("14")}>
+                14 days
+              </button>
+              <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}>
+                Month
+              </button>
             </div>
-            <button className="btn btn-sm" onClick={() => setOffset(0)}>Today</button>
+            <button className="btn btn-sm" onClick={() => setOffset(0)}>
+              Today
+            </button>
           </div>
         </div>
 
         <div className="tape-scroll">
           <div style={{ minWidth: LABEL_W + stripWidth }}>
             {/* Header row */}
-            <div style={{ display: "flex", position: "sticky", top: 0, zIndex: 6, background: "var(--surface)" }}>
-              <div className="tape-corner" style={{ width: LABEL_W, flex: `0 0 ${LABEL_W}px`, height: HEADER_H }}>
+            <div
+              style={{
+                display: "flex",
+                position: "sticky",
+                top: 0,
+                zIndex: 6,
+                background: "var(--surface)",
+              }}
+            >
+              <div
+                className="tape-corner"
+                style={{ width: LABEL_W, flex: `0 0 ${LABEL_W}px`, height: HEADER_H }}
+              >
                 Room
               </div>
               <div style={{ display: "flex" }}>
@@ -142,10 +173,18 @@ export function TapeChart({
                   return (
                     <div
                       key={i}
-                      className={"tape-header-cell " + (wknd ? "weekend " : "") + (isToday ? "today" : "")}
+                      className={
+                        "tape-header-cell " + (wknd ? "weekend " : "") + (isToday ? "today" : "")
+                      }
                       style={{ width: CELL_W, flex: `0 0 ${CELL_W}px`, height: HEADER_H }}
                     >
-                      <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                      <div
+                        style={{
+                          fontSize: 10.5,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.07em",
+                        }}
+                      >
                         {d.toLocaleDateString("en-IN", { weekday: "short", timeZone: "UTC" })}
                       </div>
                       <div className="day">{d.getUTCDate()}</div>
@@ -160,10 +199,22 @@ export function TapeChart({
 
             {groups.map((group) => (
               <div key={group.typeId}>
-                <div className="tape-room-type-row" style={{ height: GROUP_H, position: "sticky", left: 0, zIndex: 3 }}>
+                <div
+                  className="tape-room-type-row"
+                  style={{ height: GROUP_H, position: "sticky", left: 0, zIndex: 3 }}
+                >
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: group.color }} />
                   {group.typeName}
-                  <span style={{ marginLeft: 6, color: "var(--muted-2)", textTransform: "none", letterSpacing: 0, fontWeight: 500, fontSize: 11 }}>
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      color: "var(--muted-2)",
+                      textTransform: "none",
+                      letterSpacing: 0,
+                      fontWeight: 500,
+                      fontSize: 11,
+                    }}
+                  >
                     {group.rooms.length} rooms
                   </span>
                 </div>
@@ -171,16 +222,29 @@ export function TapeChart({
                 {group.rooms.map((room) => {
                   const roomBookings = bookings.filter((b) => b.roomId === room.id);
                   return (
-                    <div key={room.id} style={{ display: "flex", position: "relative", height: ROW_H }}>
+                    <div
+                      key={room.id}
+                      style={{ display: "flex", position: "relative", height: ROW_H }}
+                    >
                       <div
                         className="tape-room-label"
-                        style={{ width: LABEL_W, flex: `0 0 ${LABEL_W}px`, height: ROW_H, position: "sticky", left: 0, zIndex: 2 }}
+                        style={{
+                          width: LABEL_W,
+                          flex: `0 0 ${LABEL_W}px`,
+                          height: ROW_H,
+                          position: "sticky",
+                          left: 0,
+                          zIndex: 2,
+                        }}
                       >
                         <div>
                           <div className="num">{room.number}</div>
                           <div className="type">{room.name}</div>
                         </div>
-                        <div className={"clean " + cleanClass[room.cleanliness]} title={"Cleaning: " + room.cleanliness} />
+                        <div
+                          className={"clean " + cleanClass[room.cleanliness]}
+                          title={"Cleaning: " + room.cleanliness}
+                        />
                       </div>
 
                       <div style={{ position: "relative", display: "flex", height: ROW_H }}>
@@ -191,7 +255,11 @@ export function TapeChart({
                           return (
                             <div
                               key={i}
-                              className={"tape-cell " + (wknd ? "weekend " : "") + (isToday ? "today-col" : "")}
+                              className={
+                                "tape-cell " +
+                                (wknd ? "weekend " : "") +
+                                (isToday ? "today-col" : "")
+                              }
                               style={{ width: CELL_W, flex: `0 0 ${CELL_W}px`, height: ROW_H }}
                               onClick={() => quickAdd(room.id, iso)}
                             />
@@ -264,7 +332,16 @@ export function TapeChart({
         </div>
       </div>
 
-      <div style={{ marginTop: 16, fontSize: 12.5, color: "var(--muted)", display: "flex", gap: 6, alignItems: "center" }}>
+      <div
+        style={{
+          marginTop: 16,
+          fontSize: 12.5,
+          color: "var(--muted)",
+          display: "flex",
+          gap: 6,
+          alignItems: "center",
+        }}
+      >
         <Icon name="info" className="icon-sm" />
         Tip: click an empty cell to start a booking for that room and date.
       </div>

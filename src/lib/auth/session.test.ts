@@ -50,7 +50,12 @@ describe("staff sessions", () => {
     expect(row?.scope).toBe("staff");
 
     const session = await getStaffSession();
-    expect(session).toMatchObject({ userId: fx.user.id, ownerId: fx.owner.id, role: "OWNER", scope: "staff" });
+    expect(session).toMatchObject({
+      userId: fx.user.id,
+      ownerId: fx.owner.id,
+      role: "OWNER",
+      scope: "staff",
+    });
   });
 
   it("returns null when no cookie is present", async () => {
@@ -106,11 +111,20 @@ describe("guest sessions", () => {
     jar.store.set("staykit_guest", "bogus");
     expect(await getGuestSession()).toBeNull();
     // a staff-scoped session presented on the guest cookie
-    await prisma.session.create({ data: { token: hash("staffish"), scope: "staff", userId: fx.user.id, expiresAt: new Date(Date.now() + 60000) } });
+    await prisma.session.create({
+      data: {
+        token: hash("staffish"),
+        scope: "staff",
+        userId: fx.user.id,
+        expiresAt: new Date(Date.now() + 60000),
+      },
+    });
     jar.store.set("staykit_guest", "staffish");
     expect(await getGuestSession()).toBeNull();
     // a guest-scoped session with no phone recorded
-    await prisma.session.create({ data: { token: hash("nophone"), scope: "guest", expiresAt: new Date(Date.now() + 60000) } });
+    await prisma.session.create({
+      data: { token: hash("nophone"), scope: "guest", expiresAt: new Date(Date.now() + 60000) },
+    });
     jar.store.set("staykit_guest", "nophone");
     expect(await getGuestSession()).toBeNull();
   });

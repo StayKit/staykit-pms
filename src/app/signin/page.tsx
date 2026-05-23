@@ -12,10 +12,15 @@ export default function SignInPage() {
           <div style={{ fontWeight: 600, fontSize: 16 }}>StayKit</div>
         </div>
         <h1>Sign in to your workspace</h1>
-        <div className="sub">Owners, managers and front-desk staff sign in with a one-time code.</div>
+        <div className="sub">
+          Owners, managers and front-desk staff sign in with a one-time code.
+        </div>
         <OtpFlow mode="staff" successHref="/dashboard" />
         <div style={{ marginTop: 18, fontSize: 12.5, color: "var(--muted)", textAlign: "center" }}>
-          Are you a guest? <Link href="/my" style={{ color: "var(--brand)", fontWeight: 550 }}>View your booking</Link>
+          Are you a guest?{" "}
+          <Link href="/my" style={{ color: "var(--brand)", fontWeight: 550 }}>
+            View your booking
+          </Link>
         </div>
       </div>
     </div>

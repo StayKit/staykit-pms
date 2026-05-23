@@ -45,7 +45,10 @@ export async function resolveMcpContext(req: Request): Promise<McpContext | null
 
   // Dev fallback.
   if (process.env.NODE_ENV !== "production" && process.env.REQUIRE_LOGIN !== "1") {
-    const user = await prisma.user.findFirst({ where: { role: "OWNER" }, orderBy: { createdAt: "asc" } });
+    const user = await prisma.user.findFirst({
+      where: { role: "OWNER" },
+      orderBy: { createdAt: "asc" },
+    });
     if (user) {
       return {
         ownerId: user.ownerId,

@@ -14,8 +14,12 @@ import {
 describe("deriveState", () => {
   it("maps booking status enums to display states", () => {
     expect(deriveState({ status: "TENTATIVE", amountPaid: 0, totalAmount: 100 })).toBe("tentative");
-    expect(deriveState({ status: "CHECKED_IN", amountPaid: 0, totalAmount: 100 })).toBe("checkedin");
-    expect(deriveState({ status: "CHECKED_OUT", amountPaid: 0, totalAmount: 100 })).toBe("checkedout");
+    expect(deriveState({ status: "CHECKED_IN", amountPaid: 0, totalAmount: 100 })).toBe(
+      "checkedin",
+    );
+    expect(deriveState({ status: "CHECKED_OUT", amountPaid: 0, totalAmount: 100 })).toBe(
+      "checkedout",
+    );
     expect(deriveState({ status: "CANCELLED", amountPaid: 0, totalAmount: 100 })).toBe("cancelled");
     expect(deriveState({ status: "NO_SHOW", amountPaid: 0, totalAmount: 100 })).toBe("noshow");
   });

@@ -5,9 +5,9 @@ Constants live in `src/lib/config/index.ts` (`GST`) and the logic in `src/lib/ta
 ## Rates (Notification 15/2025-Central Tax (Rate), 17 Sep 2025; effective 22 Sep 2025)
 
 | Per-unit, per-night **transaction value** | GST | ITC |
-|---|---|---|
-| ≤ ₹7,500 | 5% | No |
-| > ₹7,500 | 18% | Yes |
+| ----------------------------------------- | --- | --- |
+| ≤ ₹7,500                                  | 5%  | No  |
+| > ₹7,500                                  | 18% | Yes |
 
 The threshold is on the **transaction value per unit per night** — not the declared tariff and not
 the total stay value. StayKit therefore decides the rate **per night line**, so a stay that crosses

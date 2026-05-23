@@ -16,7 +16,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends openssl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
-RUN npm ci
+# HUSKY=0 disables the `prepare` hook install — there's no .git in the build context.
+RUN HUSKY=0 npm ci
 
 # ───── 2. builder: generate Prisma client + build the standalone server ─────
 FROM ${NODE_IMAGE} AS builder

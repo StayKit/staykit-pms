@@ -10,17 +10,31 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && npm run db:seed",
-    "setup": "prisma generate && prisma db push && npm run db:seed"
+    "setup": "prisma generate && prisma db push && npm run db:seed",
+    "prepare": "husky"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "*.{js,cjs,mjs,json,jsonc,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
@@ -30,6 +44,8 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
@@ -37,7 +53,13 @@
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
     "@vitest/coverage-v8": "^2.1.9",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.1.6",
+    "eslint-config-prettier": "^9.1.2",
+    "husky": "^9.1.7",
     "jsdom": "^25.0.1",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.8.3",
     "prisma": "^6.2.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",

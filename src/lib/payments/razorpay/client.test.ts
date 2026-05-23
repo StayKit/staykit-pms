@@ -47,7 +47,11 @@ describe("createPaymentLink", () => {
     vi.stubEnv("RAZORPAY_KEY_SECRET_TEST", "secret");
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ id: "plink_real", short_url: "https://rzp.io/i/abc", expire_by: 1893456000 }),
+      json: async () => ({
+        id: "plink_real",
+        short_url: "https://rzp.io/i/abc",
+        expire_by: 1893456000,
+      }),
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -65,14 +69,20 @@ describe("createPaymentLink", () => {
   it("throws when the Razorpay API returns an error", async () => {
     vi.stubEnv("RAZORPAY_KEY_ID_TEST", "rzp_test_x");
     vi.stubEnv("RAZORPAY_KEY_SECRET_TEST", "secret");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 401, text: async () => "bad key" }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 401, text: async () => "bad key" }),
+    );
     await expect(createPaymentLink(params)).rejects.toThrow(/payment link failed/);
   });
 
   it("falls back to a 6-month expiry when the API omits expire_by", async () => {
     vi.stubEnv("RAZORPAY_KEY_ID_TEST", "rzp_test_x");
     vi.stubEnv("RAZORPAY_KEY_SECRET_TEST", "secret");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "p", short_url: "u" }) }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "p", short_url: "u" }) }),
+    );
     const r = await createPaymentLink(params);
     expect(r.expiresAt).toBeInstanceOf(Date);
   });
@@ -114,7 +124,10 @@ describe("initiateRefund", () => {
   it("calls the refund API when configured", async () => {
     vi.stubEnv("RAZORPAY_KEY_ID_TEST", "rzp_test_x");
     vi.stubEnv("RAZORPAY_KEY_SECRET_TEST", "secret");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "rfnd_real" }) }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "rfnd_real" }) }),
+    );
     const r = await initiateRefund("pay_x", 100000, "optimum");
     expect(r).toEqual({ razorpayRefundId: "rfnd_real", mock: false });
   });
@@ -122,7 +135,10 @@ describe("initiateRefund", () => {
   it("throws on a failed refund API call", async () => {
     vi.stubEnv("RAZORPAY_KEY_ID_TEST", "rzp_test_x");
     vi.stubEnv("RAZORPAY_KEY_SECRET_TEST", "secret");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400, text: async () => "nope" }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 400, text: async () => "nope" }),
+    );
     await expect(initiateRefund("pay_x", 100000, "normal")).rejects.toThrow(/refund failed/);
   });
 });

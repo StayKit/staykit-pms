@@ -11,7 +11,9 @@ import type { OtpPurpose } from "@prisma/client";
 const PEPPER = process.env.OTP_PEPPER || "dev-pepper-change-me";
 
 function hashCode(code: string): string {
-  return createHash("sha256").update(code + PEPPER).digest("hex");
+  return createHash("sha256")
+    .update(code + PEPPER)
+    .digest("hex");
 }
 
 function generateCode(): string {

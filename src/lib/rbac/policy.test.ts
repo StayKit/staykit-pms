@@ -45,19 +45,25 @@ describe("assertAccess", () => {
 
   it("ignores the property scope for the OWNER", () => {
     expect(() =>
-      assertAccess({ role: "OWNER", propertyScopes: ["p-other"] }, "bookings:write", { propertyId: "p1" }),
+      assertAccess({ role: "OWNER", propertyScopes: ["p-other"] }, "bookings:write", {
+        propertyId: "p1",
+      }),
     ).not.toThrow();
   });
 
   it("rejects a manager acting on a property outside their scope", () => {
     expect(() =>
-      assertAccess({ role: "MANAGER", propertyScopes: ["p1"] }, "bookings:write", { propertyId: "p2" }),
+      assertAccess({ role: "MANAGER", propertyScopes: ["p1"] }, "bookings:write", {
+        propertyId: "p2",
+      }),
     ).toThrow(AccessError);
   });
 
   it("allows a manager on a scoped property", () => {
     expect(() =>
-      assertAccess({ role: "MANAGER", propertyScopes: ["p1"] }, "bookings:write", { propertyId: "p1" }),
+      assertAccess({ role: "MANAGER", propertyScopes: ["p1"] }, "bookings:write", {
+        propertyId: "p1",
+      }),
     ).not.toThrow();
   });
 

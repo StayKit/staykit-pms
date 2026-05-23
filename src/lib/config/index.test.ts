@@ -82,6 +82,15 @@ describe("retention & app constants", () => {
 describe("default channels", () => {
   it("seeds the spec's manual source channels", () => {
     const keys = DEFAULT_CHANNELS.map((c) => c.key);
-    expect(keys).toEqual(["direct", "walkin", "phone", "instagram", "whatsapp", "airbnb", "booking", "mmt"]);
+    expect(keys).toEqual([
+      "direct",
+      "walkin",
+      "phone",
+      "instagram",
+      "whatsapp",
+      "airbnb",
+      "booking",
+      "mmt",
+    ]);
   });
 });

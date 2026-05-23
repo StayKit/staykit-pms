@@ -27,7 +27,11 @@ export default async function DashboardPage() {
         checkIn: { gte: t0, lt: t1 },
         status: { in: ["CONFIRMED", "TENTATIVE", "CHECKED_IN"] },
       },
-      include: { guests: { where: { isPrimary: true }, include: { guest: true } }, rooms: { include: { room: true } }, channel: true },
+      include: {
+        guests: { where: { isPrimary: true }, include: { guest: true } },
+        rooms: { include: { room: true } },
+        channel: true,
+      },
     }),
     prisma.booking.count({ where: { propertyId: property.id, checkOut: { gte: t0, lt: t1 } } }),
     prisma.bookingRoom.findMany({
@@ -50,7 +54,11 @@ export default async function DashboardPage() {
       where: { date: { gte: t0, lt: t7 }, room: { propertyId: property.id } },
       _count: { _all: true },
     }),
-    prisma.auditLog.findMany({ where: { ownerId: ctx.ownerId }, orderBy: { createdAt: "desc" }, take: 6 }),
+    prisma.auditLog.findMany({
+      where: { ownerId: ctx.ownerId },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    }),
   ]);
 
   const totalRooms = property._count.rooms;
@@ -69,15 +77,41 @@ export default async function DashboardPage() {
           Good day, {ctx.name.split(" ")[0]}
         </h1>
         <div style={{ fontSize: 14, color: "var(--ink-2)", marginTop: 6 }}>
-          You have <b>{arrivals.length} arrivals</b> and <b>{pendingRows.length} payments still to collect</b> today.
+          You have <b>{arrivals.length} arrivals</b> and{" "}
+          <b>{pendingRows.length} payments still to collect</b> today.
         </div>
       </div>
 
       <div className="kpi-grid">
-        <Kpi label="Arriving today" value={String(arrivals.length)} footer="See list" href="#arrivals" />
-        <Kpi label="Departing today" value={String(departures)} footer="See list" href="/bookings" />
-        <Kpi label="Tonight's occupancy" value={`${occPct}`} unit="%" delta={`${occRooms} of ${totalRooms} rooms`} footer="View calendar" href="/calendar" />
-        <Kpi label="Pending payments" prefix="₹" value={inr(pendingTotal, false)} delta={`${pendingRows.length} payment link${pendingRows.length === 1 ? "" : "s"}`} footer="Send reminders" href="/bookings?filter=unpaid" warm />
+        <Kpi
+          label="Arriving today"
+          value={String(arrivals.length)}
+          footer="See list"
+          href="#arrivals"
+        />
+        <Kpi
+          label="Departing today"
+          value={String(departures)}
+          footer="See list"
+          href="/bookings"
+        />
+        <Kpi
+          label="Tonight's occupancy"
+          value={`${occPct}`}
+          unit="%"
+          delta={`${occRooms} of ${totalRooms} rooms`}
+          footer="View calendar"
+          href="/calendar"
+        />
+        <Kpi
+          label="Pending payments"
+          prefix="₹"
+          value={inr(pendingTotal, false)}
+          delta={`${pendingRows.length} payment link${pendingRows.length === 1 ? "" : "s"}`}
+          footer="Send reminders"
+          href="/bookings?filter=unpaid"
+          warm
+        />
       </div>
 
       <div className="section-head">
@@ -115,7 +149,9 @@ export default async function DashboardPage() {
           <div className="card-header">
             <div>
               <h3>Today&apos;s arrivals</h3>
-              <div className="sub" style={{ marginTop: 2 }}>{arrivals.length} guests expected</div>
+              <div className="sub" style={{ marginTop: 2 }}>
+                {arrivals.length} guests expected
+              </div>
             </div>
             <Link className="btn btn-primary btn-sm" href="?new=1" style={{ marginLeft: "auto" }}>
               <Icon name="plus" className="icon-sm" /> Add booking
@@ -133,10 +169,16 @@ export default async function DashboardPage() {
                   <Link key={b.id} href={`/bookings/${b.id}`} className="arrivals-row">
                     {g && <Avatar name={g.name} id={g.id} />}
                     <div style={{ minWidth: 0 }}>
-                      <div className="name" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        className="name"
+                        style={{ display: "flex", alignItems: "center", gap: 8 }}
+                      >
                         {g?.name ?? "Guest"}
                         {g?.isForeign && (
-                          <span className="pill pill-outline" style={{ fontSize: 10.5, padding: "1px 6px" }}>
+                          <span
+                            className="pill pill-outline"
+                            style={{ fontSize: 10.5, padding: "1px 6px" }}
+                          >
                             <Icon name="globe" className="icon-sm" />
                             Foreign national
                           </span>
@@ -149,7 +191,9 @@ export default async function DashboardPage() {
                     <div className="room">{room ? `${room.number} · ${room.name}` : ""}</div>
                     <div className="actions">
                       {state === "unpaid" || state === "partial" ? (
-                        <span className="btn btn-sm"><Icon name="send" className="icon-sm" /> Send link</span>
+                        <span className="btn btn-sm">
+                          <Icon name="send" className="icon-sm" /> Send link
+                        </span>
                       ) : (
                         <StatusPill state="paid">Paid</StatusPill>
                       )}
@@ -165,19 +209,37 @@ export default async function DashboardPage() {
           <div className="card-header">
             <div>
               <h3>Recent activity</h3>
-              <div className="sub" style={{ marginTop: 2 }}>What&apos;s happened today</div>
+              <div className="sub" style={{ marginTop: 2 }}>
+                What&apos;s happened today
+              </div>
             </div>
           </div>
           <div className="card-body" style={{ padding: 0 }}>
             {activity.map((a) => (
               <div key={a.id} className="activity-row">
-                <div className={"activity-dot " + (a.actorType === "MCP" ? "accent" : a.actorType === "SYSTEM" ? "brand" : "")}>
-                  <Icon name={a.actorType === "MCP" ? "sparkles" : a.actorType === "SYSTEM" ? "indian-rupee" : "user"} className="icon-sm" />
+                <div
+                  className={
+                    "activity-dot " +
+                    (a.actorType === "MCP" ? "accent" : a.actorType === "SYSTEM" ? "brand" : "")
+                  }
+                >
+                  <Icon
+                    name={
+                      a.actorType === "MCP"
+                        ? "sparkles"
+                        : a.actorType === "SYSTEM"
+                          ? "indian-rupee"
+                          : "user"
+                    }
+                    className="icon-sm"
+                  />
                 </div>
                 <div className="text">
                   <strong>{a.actorName}</strong>
                   {a.actorType === "MCP" && (
-                    <span className="bot-tag"><Icon name="sparkles" className="icon-sm" /> AI</span>
+                    <span className="bot-tag">
+                      <Icon name="sparkles" className="icon-sm" /> AI
+                    </span>
                   )}{" "}
                   {a.summary}
                 </div>
@@ -189,12 +251,14 @@ export default async function DashboardPage() {
       </div>
 
       <div className="checklist-card" style={{ marginTop: 28 }}>
-        <div className="icon-wrap"><Icon name="sparkles" className="icon" /></div>
+        <div className="icon-wrap">
+          <Icon name="sparkles" className="icon" />
+        </div>
         <div className="text">
           <div className="title">Run your homestay from Claude.ai</div>
           <div className="sub">
-            Connect StayKit to Claude as a custom connector. Ask &quot;Send a payment reminder to everyone
-            arriving tomorrow&quot; — every action is logged and reversible.
+            Connect StayKit to Claude as a custom connector. Ask &quot;Send a payment reminder to
+            everyone arriving tomorrow&quot; — every action is logged and reversible.
           </div>
         </div>
         <Link className="btn" href="/assistant">
@@ -226,9 +290,16 @@ function Kpi({
 }) {
   return (
     <Link href={href} className={"kpi " + (warm ? "accent-warm" : "")}>
-      <div className="label"><span className={"dot " + (warm ? "accent" : "")} />{label}</div>
+      <div className="label">
+        <span className={"dot " + (warm ? "accent" : "")} />
+        {label}
+      </div>
       <div className="value">
-        {prefix && <span style={{ fontSize: 20, color: "var(--muted)", marginRight: 2, fontWeight: 500 }}>{prefix}</span>}
+        {prefix && (
+          <span style={{ fontSize: 20, color: "var(--muted)", marginRight: 2, fontWeight: 500 }}>
+            {prefix}
+          </span>
+        )}
         <span className="tabular">{value}</span>
         {unit && <span className="unit">{unit}</span>}
       </div>

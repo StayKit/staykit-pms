@@ -1,0 +1,3 @@
+# Fast feedback on staged files only — lint + format, then a full typecheck.
+npx lint-staged
+npm run typecheck

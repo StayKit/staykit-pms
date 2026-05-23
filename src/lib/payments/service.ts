@@ -8,7 +8,12 @@ import { createPaymentLink } from "./razorpay/client";
 
 export async function createPaymentLinkForBooking(
   bookingId: string,
-  opts: { amountPaise?: number; notifyVia?: string; actorName?: string; actorType?: "USER" | "MCP" } = {},
+  opts: {
+    amountPaise?: number;
+    notifyVia?: string;
+    actorName?: string;
+    actorType?: "USER" | "MCP";
+  } = {},
 ) {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },

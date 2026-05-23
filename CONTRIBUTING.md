@@ -15,12 +15,28 @@ npm run dev
 - The app runs fully in **mock mode** without any third-party credentials: payment links are fake,
   notifications log to the console, and OTP codes are printed to the terminal.
 
+## Git hooks (automatic)
+
+`npm install` sets up [Husky](https://typicode.github.io/husky/) hooks for you — no extra step:
+
+| Hook         | Runs                                                     | Why                                                                   |
+| ------------ | -------------------------------------------------------- | --------------------------------------------------------------------- |
+| `pre-commit` | `lint-staged` (ESLint + Prettier on staged files), `tsc` | Fast, format-on-save quality on what you touch                        |
+| `commit-msg` | `commitlint`                                             | Enforces [Conventional Commits](https://www.conventionalcommits.org/) |
+| `pre-push`   | `vitest run --coverage`                                  | Full suite + coverage thresholds before sharing                       |
+
+The full test+coverage run lives on `pre-push` (not `pre-commit`) so commits stay fast.
+In a genuine emergency you can bypass a hook with `--no-verify`, but CI runs the same
+checks, so a bypassed commit will simply fail there instead.
+
 ## Before you open a PR
 
 ```bash
-npm run typecheck   # tsc --noEmit
-npm test            # Vitest
-npm run build       # next build must pass
+npm run lint          # ESLint (next lint)
+npm run format        # Prettier — auto-format (format:check to only verify)
+npm run typecheck     # tsc --noEmit
+npm run test:coverage # Vitest + coverage thresholds
+npm run build         # next build must pass
 ```
 
 ## Code style & conventions

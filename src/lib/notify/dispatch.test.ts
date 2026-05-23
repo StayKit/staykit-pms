@@ -49,7 +49,12 @@ describe("enqueueNotification", () => {
   it("applies an automation delay to scheduledFor", async () => {
     const t = await template("WHATSAPP", "PRE_ARRIVAL_24H", "see you");
     await prisma.notificationAutomation.create({
-      data: { ownerId: fx.owner.id, triggerKey: "PRE_ARRIVAL_24H", templateId: t.id, delayMinutes: -1440 },
+      data: {
+        ownerId: fx.owner.id,
+        triggerKey: "PRE_ARRIVAL_24H",
+        templateId: t.id,
+        delayMinutes: -1440,
+      },
     });
     const [log] = await enqueueNotification({
       ownerId: fx.owner.id,

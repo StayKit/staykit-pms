@@ -47,7 +47,9 @@ export async function getKpis(
   return {
     roomNightsSold,
     roomNightsAvailable,
-    occupancyPct: roomNightsAvailable ? Math.round((roomNightsSold / roomNightsAvailable) * 100) : 0,
+    occupancyPct: roomNightsAvailable
+      ? Math.round((roomNightsSold / roomNightsAvailable) * 100)
+      : 0,
     roomRevenuePaise,
     adrPaise: roomNightsSold ? Math.round(roomRevenuePaise / roomNightsSold) : 0,
     revparPaise: roomNightsAvailable ? Math.round(roomRevenuePaise / roomNightsAvailable) : 0,

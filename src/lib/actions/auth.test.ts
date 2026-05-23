@@ -15,13 +15,7 @@ vi.mock("../auth/otp", async (importOriginal) => {
 
 import { createStaffSession, createGuestSession, destroySession } from "@/lib/auth/session";
 import { requestOtp, verifyOtp } from "../auth/otp";
-import {
-  requestStaffOtp,
-  verifyStaffOtp,
-  requestGuestOtp,
-  verifyGuestOtp,
-  logout,
-} from "./auth";
+import { requestStaffOtp, verifyStaffOtp, requestGuestOtp, verifyGuestOtp, logout } from "./auth";
 import { prisma } from "@/lib/db";
 import { resetDb, seedBasic, type Fixture } from "../../../test/factories";
 
@@ -48,7 +42,9 @@ describe("requestStaffOtp", () => {
   });
 
   it("normalises a bare 10-digit number to +91", async () => {
-    await prisma.user.create({ data: { ownerId: fx.owner.id, name: "T", phone: "+919876543210", role: "STAFF" } });
+    await prisma.user.create({
+      data: { ownerId: fx.owner.id, name: "T", phone: "+919876543210", role: "STAFF" },
+    });
     expect((await requestStaffOtp("9876543210")).ok).toBe(true);
   });
 
@@ -139,7 +135,10 @@ describe("guest OTP", () => {
 
   it("falls back to a default message when guest verification throws a non-Error", async () => {
     mockVerifyOtp.mockRejectedValueOnce("string failure");
-    expect(await verifyGuestOtp("r", "123456")).toEqual({ ok: false, message: "Verification failed." });
+    expect(await verifyGuestOtp("r", "123456")).toEqual({
+      ok: false,
+      message: "Verification failed.",
+    });
   });
 });
 

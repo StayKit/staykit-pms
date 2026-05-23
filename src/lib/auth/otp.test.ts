@@ -27,7 +27,9 @@ describe("requestOtp", () => {
 
   it("rate-limits to 10 sends per IP per hour", async () => {
     for (let i = 0; i < 10; i++) await requestOtp(`+9198000100${i}`, "GUEST_LOGIN", "1.2.3.4");
-    await expect(requestOtp("+919800019999", "GUEST_LOGIN", "1.2.3.4")).rejects.toThrow(RateLimitError);
+    await expect(requestOtp("+919800019999", "GUEST_LOGIN", "1.2.3.4")).rejects.toThrow(
+      RateLimitError,
+    );
   });
 });
 

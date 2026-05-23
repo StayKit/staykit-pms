@@ -20,7 +20,24 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
+      - run: npm run lint
+      - run: npm run format:check
       - run: npm run typecheck
-      - run: npm test
+      - run: npm run test:coverage
       - run: npx prisma db push
       - run: npm run build
+
+  # Validate PR commit messages against Conventional Commits.
+  commitlint:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}" --verbose

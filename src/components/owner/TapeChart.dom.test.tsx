@@ -18,14 +18,41 @@ const groups: TapeGroup[] = [
   },
 ];
 const bookings: TapeBooking[] = [
-  { id: "b1", roomId: "r1", label: "Sameer", checkIn: "2026-06-14", checkOut: "2026-06-17", state: "paid", meta: "3n", isBlock: false },
-  { id: "blk1", roomId: "r2", label: "Blocked", checkIn: "2026-06-14", checkOut: "2026-06-15", state: "block", meta: "Deep clean", isBlock: true },
+  {
+    id: "b1",
+    roomId: "r1",
+    label: "Sameer",
+    checkIn: "2026-06-14",
+    checkOut: "2026-06-17",
+    state: "paid",
+    meta: "3n",
+    isBlock: false,
+  },
+  {
+    id: "blk1",
+    roomId: "r2",
+    label: "Blocked",
+    checkIn: "2026-06-14",
+    checkOut: "2026-06-15",
+    state: "block",
+    meta: "Deep clean",
+    isBlock: true,
+  },
 ];
-const properties = [{ id: "p1", name: "Coorg" }, { id: "p2", name: "Backwaters" }];
+const properties = [
+  { id: "p1", name: "Coorg" },
+  { id: "p2", name: "Backwaters" },
+];
 
 function setup() {
   return render(
-    <TapeChart anchorIso="2026-06-15" groups={groups} bookings={bookings} properties={properties} activePropertyId="p1" />,
+    <TapeChart
+      anchorIso="2026-06-15"
+      groups={groups}
+      bookings={bookings}
+      properties={properties}
+      activePropertyId="p1"
+    />,
   );
 }
 

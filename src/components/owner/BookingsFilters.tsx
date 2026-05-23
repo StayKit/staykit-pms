@@ -33,7 +33,16 @@ export function BookingsFilters() {
   }
 
   return (
-    <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--line)", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+    <div
+      style={{
+        padding: "14px 16px",
+        borderBottom: "1px solid var(--line)",
+        display: "flex",
+        gap: 12,
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
       <form
         className="search"
         onSubmit={(e) => {

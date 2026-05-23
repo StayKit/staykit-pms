@@ -1,0 +1,28 @@
+# Generated / vendored — never format these
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+package-lock.json
+next-env.d.ts
+
+# Local database, secrets, logs
+data
+*.db
+.env
+.env.*
+*.log
+
+# Reference assets ported verbatim — keep byte-identical
+design
+src/app/globals.css
+docs/specification.md
+
+# Local editor/agent tooling config
+.claude
+.vscode
+
+# Licence text
+LICENSE

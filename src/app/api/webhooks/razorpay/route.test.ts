@@ -16,9 +16,14 @@ beforeEach(async () => {
   await resetDb();
   fx = await seedBasic({ gstin: null });
   const b = await createBooking({
-    ownerId: fx.owner.id, propertyId: fx.property.id, roomId: fx.room.id, channelKey: "direct",
-    checkIn: today(), checkOut: addDays(today(), 2),
-    guest: { name: "Sameer", phone: "+919812300000" }, nightlyRatePaise: 6300_00,
+    ownerId: fx.owner.id,
+    propertyId: fx.property.id,
+    roomId: fx.room.id,
+    channelKey: "direct",
+    checkIn: today(),
+    checkOut: addDays(today(), 2),
+    guest: { name: "Sameer", phone: "+919812300000" },
+    nightlyRatePaise: 6300_00,
   });
   bookingId = b.id;
   await createPaymentLinkForBooking(bookingId);
@@ -50,7 +55,10 @@ function post(raw: string, headers: Record<string, string> = {}) {
 describe("POST /api/webhooks/razorpay", () => {
   it("rejects a request with no signature/event-id headers", async () => {
     const res = await POST(
-      new Request("http://localhost:3000/api/webhooks/razorpay", { method: "POST", body: JSON.stringify(event()) }),
+      new Request("http://localhost:3000/api/webhooks/razorpay", {
+        method: "POST",
+        body: JSON.stringify(event()),
+      }),
     );
     expect(res.status).toBe(400);
   });
@@ -100,7 +108,9 @@ describe("POST /api/webhooks/razorpay", () => {
   });
 
   it("ignores unrelated events with a 2xx", async () => {
-    const res = await post(JSON.stringify({ event: "subscription.charged", payload: {} }), { "x-razorpay-event-id": "evt_other" });
+    const res = await post(JSON.stringify({ event: "subscription.charged", payload: {} }), {
+      "x-razorpay-event-id": "evt_other",
+    });
     expect(res.status).toBe(200);
   });
 
@@ -116,7 +126,10 @@ describe("POST /api/webhooks/razorpay", () => {
   });
 
   it("skips application when the captured amount is zero", async () => {
-    const evt = { event: "payment.captured", payload: { payment: { entity: { id: "pay_zero", amount: 0, notes: { bookingId } } } } };
+    const evt = {
+      event: "payment.captured",
+      payload: { payment: { entity: { id: "pay_zero", amount: 0, notes: { bookingId } } } },
+    };
     const res = await post(JSON.stringify(evt), { "x-razorpay-event-id": "evt_zero" });
     expect(res.status).toBe(200);
     const b = await prisma.booking.findUnique({ where: { id: bookingId } });
@@ -128,7 +141,9 @@ describe("POST /api/webhooks/razorpay", () => {
     // catches it and still returns 2xx so Razorpay won't retry forever.
     const evt = {
       event: "payment.captured",
-      payload: { payment: { entity: { id: "pay_x", amount: 1000, notes: { bookingId: "ghost" } } } },
+      payload: {
+        payment: { entity: { id: "pay_x", amount: 1000, notes: { bookingId: "ghost" } } },
+      },
     };
     const res = await post(JSON.stringify(evt), { "x-razorpay-event-id": "evt_err" });
     expect(res.status).toBe(200);

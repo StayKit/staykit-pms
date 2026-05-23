@@ -39,18 +39,18 @@ curl -X POST https://host/mcp \
 
 ## Tools
 
-| Tool | Scope | Notes |
-|---|---|---|
-| `list_properties`, `get_property`, `list_rooms` | `properties:read` | |
-| `check_availability` | `bookings:read` | rooms free for a date range |
-| `list_bookings`, `get_booking` | `bookings:read` | |
-| `search_guests` | `bookings:read` | phone partially redacted |
-| `get_kpis` | `reports:read` | occupancy / ADR / RevPAR |
-| `create_booking` | `bookings:write` | double-booking-safe; tagged `createdViaMcp` |
-| `check_in`, `check_out` | `bookings:write` | |
-| `cancel_booking` | `bookings:cancel` | releases room nights |
-| `get_payment_status`, `create_payment_link` | `payments:read` | link send is a real side effect |
-| `initiate_refund` | `payments:refund` | **human-in-the-loop**: returns `needsConfirmation` until `confirm:true` and owner approval |
+| Tool                                            | Scope             | Notes                                                                                      |
+| ----------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------ |
+| `list_properties`, `get_property`, `list_rooms` | `properties:read` |                                                                                            |
+| `check_availability`                            | `bookings:read`   | rooms free for a date range                                                                |
+| `list_bookings`, `get_booking`                  | `bookings:read`   |                                                                                            |
+| `search_guests`                                 | `bookings:read`   | phone partially redacted                                                                   |
+| `get_kpis`                                      | `reports:read`    | occupancy / ADR / RevPAR                                                                   |
+| `create_booking`                                | `bookings:write`  | double-booking-safe; tagged `createdViaMcp`                                                |
+| `check_in`, `check_out`                         | `bookings:write`  |                                                                                            |
+| `cancel_booking`                                | `bookings:cancel` | releases room nights                                                                       |
+| `get_payment_status`, `create_payment_link`     | `payments:read`   | link send is a real side effect                                                            |
+| `initiate_refund`                               | `payments:refund` | **human-in-the-loop**: returns `needsConfirmation` until `confirm:true` and owner approval |
 
 ## Roadmap
 

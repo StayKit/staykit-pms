@@ -57,7 +57,9 @@ describe("resolveMcpContext — bearer token", () => {
     const mgr = await prisma.user.create({
       data: { ownerId: fx.owner.id, name: "Rakesh", phone: "+919800002002", role: "MANAGER" },
     });
-    await prisma.propertyScope.create({ data: { userId: mgr.id, propertyId: fx.property.id, permissions: "" } });
+    await prisma.propertyScope.create({
+      data: { userId: mgr.id, propertyId: fx.property.id, permissions: "" },
+    });
     await mintToken("mgr", { userId: mgr.id });
     const ctx = await resolveMcpContext(req("mgr"));
     expect(ctx?.propertyScopes).toEqual([fx.property.id]);

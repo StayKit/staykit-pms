@@ -49,9 +49,14 @@ describe("createPaymentLinkForBooking", () => {
     const ch = await prisma.channelSource.findFirst({ where: { ownerId: fx.owner.id } });
     const bare = await prisma.booking.create({
       data: {
-        ref: "SK-BARE1", propertyId: fx.property.id, channelId: ch!.id,
-        checkIn: today(), checkOut: addDays(today(), 1),
-        subtotal: 1000, taxAmount: 0, totalAmount: 1000,
+        ref: "SK-BARE1",
+        propertyId: fx.property.id,
+        channelId: ch!.id,
+        checkIn: today(),
+        checkOut: addDays(today(), 1),
+        subtotal: 1000,
+        taxAmount: 0,
+        totalAmount: 1000,
       },
     });
     await expect(createPaymentLinkForBooking(bare.id)).rejects.toThrow(/no primary guest/);

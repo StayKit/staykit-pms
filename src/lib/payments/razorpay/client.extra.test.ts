@@ -19,12 +19,17 @@ describe("createPaymentLink with no customer email", () => {
   it("sends undefined for a missing email", async () => {
     vi.stubEnv("RAZORPAY_KEY_ID_TEST", "rzp_test_x");
     vi.stubEnv("RAZORPAY_KEY_SECRET_TEST", "secret");
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "p", short_url: "u" }) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ id: "p", short_url: "u" }) });
     vi.stubGlobal("fetch", fetchMock);
     await createPaymentLink({
-      amountPaise: 1000, referenceId: "SK-X", bookingId: "b",
+      amountPaise: 1000,
+      referenceId: "SK-X",
+      bookingId: "b",
       customer: { name: "N", contact: "+91", email: null },
-      notify: { sms: true, email: false }, callbackUrl: "u",
+      notify: { sms: true, email: false },
+      callbackUrl: "u",
     });
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body.customer.email).toBeUndefined();

@@ -18,5 +18,8 @@ export async function GET() {
   } catch {
     checks.jobQueueDepth = null;
   }
-  return NextResponse.json({ ok, time: new Date().toISOString(), checks }, { status: ok ? 200 : 503 });
+  return NextResponse.json(
+    { ok, time: new Date().toISOString(), checks },
+    { status: ok ? 200 : 503 },
+  );
 }

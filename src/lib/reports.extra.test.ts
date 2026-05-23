@@ -13,7 +13,14 @@ beforeEach(async () => {
 describe("getKpis with no available room-nights", () => {
   it("returns zero occupancy and RevPAR when a property has no rooms", async () => {
     const empty = await prisma.property.create({
-      data: { ownerId: fx.owner.id, name: "Empty", addressLine1: "x", city: "y", state: "KA", pincode: "1" },
+      data: {
+        ownerId: fx.owner.id,
+        name: "Empty",
+        addressLine1: "x",
+        city: "y",
+        state: "KA",
+        pincode: "1",
+      },
     });
     const k = await getKpis(fx.owner.id, today(), addDays(today(), 5), empty.id);
     expect(k.roomNightsAvailable).toBe(0);

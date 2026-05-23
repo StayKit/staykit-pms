@@ -22,12 +22,25 @@ let bookingId: string;
 beforeEach(async () => {
   await resetDb();
   fx = await seedBasic({ gstin: null });
-  ctxMock.mockResolvedValue({ ownerId: fx.owner.id, userId: fx.user.id, role: "OWNER", name: "P", propertyScopes: [], demo: true });
+  ctxMock.mockResolvedValue({
+    ownerId: fx.owner.id,
+    userId: fx.user.id,
+    role: "OWNER",
+    name: "P",
+    propertyScopes: [],
+    demo: true,
+  });
   const ch = await prisma.channelSource.findFirst({ where: { ownerId: fx.owner.id } });
   const b = await prisma.booking.create({
     data: {
-      ref: "SK-PE001", propertyId: fx.property.id, channelId: ch!.id,
-      checkIn: today(), checkOut: addDays(today(), 1), subtotal: 5000_00, taxAmount: 0, totalAmount: 5000_00,
+      ref: "SK-PE001",
+      propertyId: fx.property.id,
+      channelId: ch!.id,
+      checkIn: today(),
+      checkOut: addDays(today(), 1),
+      subtotal: 5000_00,
+      taxAmount: 0,
+      totalAmount: 5000_00,
     },
   });
   bookingId = b.id;

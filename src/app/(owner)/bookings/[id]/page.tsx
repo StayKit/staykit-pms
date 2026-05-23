@@ -23,7 +23,10 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     include: {
       property: true,
       channel: true,
-      guests: { where: { isPrimary: true }, include: { guest: { include: { _count: { select: { bookings: true } } } } } },
+      guests: {
+        where: { isPrimary: true },
+        include: { guest: { include: { _count: { select: { bookings: true } } } } },
+      },
       rooms: { include: { room: true } },
       payments: { orderBy: { createdAt: "asc" } },
       paymentLinks: { orderBy: { createdAt: "asc" } },
@@ -62,7 +65,12 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     });
   }
   if (due > 0) {
-    payments.push({ icon: "clock", tone: "empty", title: `${inr(due)} still to collect`, sub: "Awaiting payment" });
+    payments.push({
+      icon: "clock",
+      tone: "empty",
+      title: `${inr(due)} still to collect`,
+      sub: "Awaiting payment",
+    });
   }
 
   const data: BookingDetailData = {
@@ -124,5 +132,10 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
 }
 
 function fmtTime(d: Date): string {
-  return d.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  return d.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
