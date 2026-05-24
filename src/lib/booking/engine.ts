@@ -160,6 +160,98 @@ export async function createBooking(input: CreateBookingInput) {
   }
 }
 
+export interface MoveBookingInput {
+  bookingId: string;
+  ownerId: string;
+  roomId?: string;
+  checkIn?: string | Date;
+  checkOut?: string | Date;
+  actorName: string;
+  actorType?: "USER" | "MCP";
+}
+
+/**
+ * Move a booking to a different room and/or different dates. Recomputes nights, rates
+ * and GST, and re-runs the double-booking guarantee: the old BookingRoom rows are
+ * dropped and new ones inserted inside one Serializable transaction, so the
+ * (roomId, date) unique constraint rejects any clash with *other* bookings.
+ */
+export async function moveBooking(input: MoveBookingInput) {
+  const booking = await prisma.booking.findFirst({
+    where: { id: input.bookingId, property: { ownerId: input.ownerId } },
+    include: { rooms: true },
+  });
+  if (!booking) throw new BookingValidationError("Booking not found.");
+  if (booking.status === "CANCELLED" || booking.status === "CHECKED_OUT") {
+    throw new BookingValidationError("This booking can no longer be moved.");
+  }
+
+  const roomId = input.roomId ?? booking.rooms[0]?.roomId;
+  if (!roomId) throw new BookingValidationError("Booking has no room to move.");
+  const checkIn = utcMidnight(input.checkIn ?? booking.checkIn);
+  const checkOut = utcMidnight(input.checkOut ?? booking.checkOut);
+  if (nightsBetween(checkIn, checkOut) < 1) {
+    throw new BookingValidationError("Check-out must be after check-in.");
+  }
+
+  const room = await prisma.room.findFirst({
+    where: { id: roomId, propertyId: booking.propertyId },
+    include: { roomType: true, property: true },
+  });
+  if (!room) throw new BookingValidationError("Room not found for this property.");
+
+  const nightDates = eachNight(checkIn, checkOut);
+  const plans = await loadRatePlans(booking.propertyId);
+  const perNight = quoteStay(nightDates, room.roomTypeId, room.roomType.baseRate, plans).perNight;
+  const tax = computeTax(
+    perNight.map((n) => ({ nightlyRatePaise: n.rate, nights: 1 })),
+    !!room.property.gstin,
+  );
+
+  try {
+    const updated = await prisma.$transaction(
+      async (tx) => {
+        await tx.bookingRoom.deleteMany({ where: { bookingId: booking.id } });
+        await tx.bookingRoom.createMany({
+          data: perNight.map((n) => ({
+            bookingId: booking.id,
+            roomId,
+            date: n.date,
+            rateApplied: n.rate,
+          })),
+        });
+        return tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            checkIn,
+            checkOut,
+            subtotal: tax.subtotalPaise,
+            taxAmount: tax.taxAmountPaise,
+            totalAmount: tax.totalPaise,
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+
+    await writeAudit({
+      ownerId: input.ownerId,
+      actorType: input.actorType ?? "USER",
+      actorName: input.actorName,
+      action: "BOOKING_MOVED",
+      entityType: "Booking",
+      entityId: booking.id,
+      summary: `moved booking ${booking.ref} to ${room.name}`,
+    });
+    return updated;
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      throw new DoubleBookingError();
+    }
+    throw e;
+  }
+}
+
 async function loadRatePlans(propertyId: string): Promise<RatePlanLike[]> {
   const plans = await prisma.ratePlan.findMany({
     where: { propertyId },

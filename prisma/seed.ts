@@ -121,6 +121,8 @@ async function main() {
       pincode: "571201",
       gstin: "29ABCDE1234F1Z5",
       cancellationPolicy: "Free cancellation up to 7 days before check-in.",
+      paymentInstructions:
+        "Pay cash at check-in, or UPI to coorgcoffee@upi. We'll confirm once received.",
       invoicePrefix: "CCC",
     },
   });
@@ -202,6 +204,7 @@ async function main() {
       state: "KL",
       pincode: "688013",
       cancellationPolicy: "Free cancellation up to 3 days before check-in.",
+      paymentInstructions: "Pay cash on arrival, or bank transfer — ask the host for details.",
       invoicePrefix: "BWV",
     },
   });

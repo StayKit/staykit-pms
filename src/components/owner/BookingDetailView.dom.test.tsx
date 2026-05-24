@@ -11,6 +11,8 @@ vi.mock("@/lib/actions/bookings", () => ({
     .mockResolvedValue({ ok: true, message: "Link sent: http://x/pay/1" }),
   markPaidAction: vi.fn().mockResolvedValue({ ok: true }),
   cancelAction: vi.fn().mockResolvedValue({ ok: true }),
+  moveBookingAction: vi.fn().mockResolvedValue({ ok: true }),
+  recordPaymentAction: vi.fn().mockResolvedValue({ ok: true, message: "Recorded ₹ 100 (cash)." }),
 }));
 
 import {
@@ -53,6 +55,7 @@ function makeData(state: DisplayState, over: Partial<BookingDetailData> = {}): B
       tax: "₹ 900",
       total: "₹ 18,900",
       paid: "₹ 9,450",
+      paidRaw: 945000,
       due: "₹ 9,450",
       dueRaw: 945000,
       taxLabel: "5% GST",
@@ -72,6 +75,8 @@ function makeData(state: DisplayState, over: Partial<BookingDetailData> = {}): B
       { bot: false, actor: "Priya", what: "created booking", when: "yesterday" },
     ],
     notes: "Late arrival",
+    move: null,
+    onlineEnabled: false,
     ...over,
   };
 }
@@ -106,12 +111,18 @@ describe("BookingDetailView", () => {
     expect(screen.getByText("Activity log")).toBeTruthy();
   });
 
-  it("sends a payment link and surfaces the toast (unpaid/partial)", async () => {
-    render(<BookingDetailView data={makeData("partial")} />);
+  it("sends a payment link when online payments are enabled", async () => {
+    render(<BookingDetailView data={makeData("partial", { onlineEnabled: true })} />);
     fireEvent.click(screen.getByRole("button", { name: /Send payment link/ }));
     await waitFor(() => expect(sendPaymentLinkAction).toHaveBeenCalledWith("b1"));
     expect(await screen.findByText(/Link sent/)).toBeTruthy();
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("defaults to cash: shows 'Mark as paid' instead of a link when online is off", () => {
+    render(<BookingDetailView data={makeData("unpaid", { onlineEnabled: false })} />);
+    expect(screen.queryByRole("button", { name: /Send payment link/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Mark as paid \(cash\)/ })).toBeTruthy();
   });
 
   it("checks in from the paid state", async () => {

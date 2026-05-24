@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Avatar, ChannelChip, StatusPill, type DisplayState } from "@/components/ui";
@@ -10,7 +10,11 @@ import {
   sendPaymentLinkAction,
   markPaidAction,
   cancelAction,
+  moveBookingAction,
+  recordPaymentAction,
 } from "@/lib/actions/bookings";
+import { refundAction, quoteRefundAction, type RefundQuoteResult } from "@/lib/actions/payments";
+import { CANCELLATION_REASONS, type CancellationReason } from "@/lib/booking/cancellation";
 
 export interface BookingDetailData {
   id: string;
@@ -41,6 +45,7 @@ export interface BookingDetailData {
     tax: string;
     total: string;
     paid: string;
+    paidRaw: number;
     due: string;
     dueRaw: number;
     taxLabel: string;
@@ -50,6 +55,15 @@ export interface BookingDetailData {
   comms: { icon: string; tone: string; title: string; sub: string }[];
   audit: { bot: boolean; actor: string; what: string; when: string }[];
   notes: string | null;
+  /** Present when the booking can still be moved (room/dates). */
+  move: {
+    roomId: string;
+    checkInYmd: string;
+    checkOutYmd: string;
+    rooms: { id: string; label: string }[];
+  } | null;
+  /** Whether Razorpay online payment links are enabled (else cash/manual only). */
+  onlineEnabled: boolean;
 }
 
 type Tab = "stay" | "guest" | "payments" | "comms" | "audit";
@@ -180,6 +194,19 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
                 <div style={{ fontSize: 13, color: "var(--ink-2)" }}>{data.notes}</div>
               </div>
             )}
+
+            {data.move && (
+              <div className="bd-section">
+                <MovePanel
+                  move={data.move}
+                  onDone={(m) => {
+                    setToast(m);
+                    router.refresh();
+                  }}
+                  bookingId={data.id}
+                />
+              </div>
+            )}
           </>
         )}
 
@@ -250,6 +277,37 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
                 </div>
               ))}
             </div>
+            {data.money.dueRaw > 0 && (
+              <RecordPaymentPanel
+                bookingId={data.id}
+                dueRaw={data.money.dueRaw}
+                onlineEnabled={data.onlineEnabled}
+                onDone={(m) => {
+                  setToast(m);
+                  router.refresh();
+                }}
+              />
+            )}
+            {data.money.paidRaw > 0 && (
+              <a
+                className="btn"
+                href={`/bookings/${data.id}/invoice`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ marginTop: 16 }}
+              >
+                <Icon name="external" className="icon-sm" /> Download invoice
+              </a>
+            )}
+            {data.money.paidRaw > 0 && data.state !== "cancelled" && (
+              <RefundPanel
+                bookingId={data.id}
+                onDone={(msg) => {
+                  setToast(msg);
+                  router.refresh();
+                }}
+              />
+            )}
           </div>
         )}
 
@@ -321,14 +379,25 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
             </button>
           ) : data.state === "unpaid" || data.state === "partial" ? (
             <>
-              <button
-                className="btn btn-accent btn-lg"
-                style={{ flex: 1 }}
-                disabled={pending}
-                onClick={() => run(() => sendPaymentLinkAction(data.id))}
-              >
-                <Icon name="send" className="icon-sm" /> Send payment link
-              </button>
+              {data.onlineEnabled ? (
+                <button
+                  className="btn btn-accent btn-lg"
+                  style={{ flex: 1 }}
+                  disabled={pending}
+                  onClick={() => run(() => sendPaymentLinkAction(data.id))}
+                >
+                  <Icon name="send" className="icon-sm" /> Send payment link
+                </button>
+              ) : (
+                <button
+                  className="btn btn-primary btn-lg"
+                  style={{ flex: 1 }}
+                  disabled={pending}
+                  onClick={() => run(() => markPaidAction(data.id))}
+                >
+                  <Icon name="check" className="icon-sm" /> Mark as paid (cash)
+                </button>
+              )}
               <button
                 className="btn btn-lg"
                 disabled={pending}
@@ -373,7 +442,216 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
   );
 }
 
-function KV({ k, v }: { k: string; v: React.ReactNode }) {
+const PAY_METHODS = [
+  { id: "cash", label: "Cash" },
+  { id: "upi", label: "UPI" },
+  { id: "bank", label: "Bank transfer" },
+  { id: "card", label: "Card" },
+  { id: "other", label: "Other" },
+];
+
+function RecordPaymentPanel({
+  bookingId,
+  dueRaw,
+  onlineEnabled,
+  onDone,
+}: Readonly<{
+  bookingId: string;
+  dueRaw: number;
+  onlineEnabled: boolean;
+  onDone: (msg: string) => void;
+}>) {
+  const dueRupees = Math.round(dueRaw / 100);
+  const [amount, setAmount] = useState(String(dueRupees));
+  const [method, setMethod] = useState("cash");
+  const [pending, start] = useTransition();
+
+  return (
+    <div className="bd-section" style={{ marginTop: 16 }}>
+      <h4>Record a payment</h4>
+      <div className="text-sm text-muted" style={{ marginBottom: 8 }}>
+        {onlineEnabled
+          ? "Confirm a payment you received directly (cash/UPI/bank), or send an online link above."
+          : "Cash-first: confirm a payment you received. The guest's status flips to paid once you do."}
+      </div>
+      <div className="field-row">
+        <div className="field">
+          <label>Amount (₹)</label>
+          <input value={amount} inputMode="numeric" onChange={(e) => setAmount(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Method</label>
+          <select value={method} onChange={(e) => setMethod(e.target.value)}>
+            {PAY_METHODS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <button
+        className="btn btn-primary"
+        disabled={pending || !amount || Number(amount) <= 0}
+        onClick={() =>
+          start(async () => {
+            const res = await recordPaymentAction(bookingId, {
+              amountRupees: Number(amount),
+              method,
+            });
+            onDone(res.message ?? (res.ok ? "Payment recorded." : "Could not record payment."));
+          })
+        }
+      >
+        <Icon name="check" className="icon-sm" /> Confirm payment
+      </button>
+    </div>
+  );
+}
+
+function MovePanel({
+  bookingId,
+  move,
+  onDone,
+}: Readonly<{
+  bookingId: string;
+  move: NonNullable<BookingDetailData["move"]>;
+  onDone: (msg: string) => void;
+}>) {
+  const [open, setOpen] = useState(false);
+  const [roomId, setRoomId] = useState(move.roomId);
+  const [checkIn, setCheckIn] = useState(move.checkInYmd);
+  const [checkOut, setCheckOut] = useState(move.checkOutYmd);
+  const [pending, start] = useTransition();
+
+  if (!open) {
+    return (
+      <button className="btn" onClick={() => setOpen(true)}>
+        <Icon name="edit" className="icon-sm" /> Move room or change dates
+      </button>
+    );
+  }
+  return (
+    <div>
+      <h4>Move booking</h4>
+      <div className="field">
+        <label>Room</label>
+        <select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
+          {move.rooms.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="field-row">
+        <div className="field">
+          <label>Check-in</label>
+          <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Check-out</label>
+          <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          className="btn btn-primary"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              const res = await moveBookingAction(bookingId, { roomId, checkIn, checkOut });
+              setOpen(false);
+              onDone(res.message ?? (res.ok ? "Moved." : "Could not move."));
+            })
+          }
+        >
+          Save move
+        </button>
+        <button className="btn btn-ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+      <div className="text-xs text-muted" style={{ marginTop: 8 }}>
+        Rates and GST are recalculated for the new room and dates.
+      </div>
+    </div>
+  );
+}
+
+function RefundPanel({
+  bookingId,
+  onDone,
+}: Readonly<{ bookingId: string; onDone: (msg: string) => void }>) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState<CancellationReason>("Guest cancellation");
+  const [quote, setQuote] = useState<RefundQuoteResult | null>(null);
+  const [pending, start] = useTransition();
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setQuote(null);
+    quoteRefundAction(bookingId, reason).then((q) => {
+      if (active) setQuote(q);
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, reason, bookingId]);
+
+  if (!open) {
+    return (
+      <button className="btn" style={{ marginTop: 18 }} onClick={() => setOpen(true)}>
+        <Icon name="rotate-ccw" className="icon-sm" /> Refund this booking
+      </button>
+    );
+  }
+
+  const nothing = quote?.ok && (quote.refundablePaise ?? 0) <= 0;
+  return (
+    <div className="bd-section" style={{ marginTop: 12 }}>
+      <h4>Refund</h4>
+      <div className="field">
+        <label>Reason</label>
+        <select value={reason} onChange={(e) => setReason(e.target.value as CancellationReason)}>
+          {CANCELLATION_REASONS.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="text-sm" style={{ color: "var(--ink-2)", margin: "8px 0" }}>
+        {quote?.ok ? `${quote.explanation} Refundable: ${quote.refundable}.` : "Calculating…"}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          className="btn btn-primary"
+          disabled={pending || !quote?.ok || nothing}
+          onClick={() =>
+            start(async () => {
+              const res = await refundAction(bookingId, { reason });
+              setOpen(false);
+              onDone(res.message ?? (res.ok ? "Refund processed." : "Refund failed."));
+            })
+          }
+        >
+          Process refund
+        </button>
+        <button className="btn btn-ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+      <div className="text-xs text-muted" style={{ marginTop: 8 }}>
+        Normal refunds take 5–7 working days. Refunds aren&apos;t possible on payments older than 6
+        months.
+      </div>
+    </div>
+  );
+}
+
+function KV({ k, v }: Readonly<{ k: string; v: React.ReactNode }>) {
   return (
     <div className="kv">
       <div className="k">{k}</div>

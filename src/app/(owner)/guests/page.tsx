@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
 import { Icon } from "@/components/Icon";
@@ -89,9 +90,9 @@ export default async function GuestsPage({
                     )}
                   </td>
                   <td>
-                    <button className="icon-btn">
-                      <Icon name="more" className="icon-sm" />
-                    </button>
+                    <Link className="icon-btn" href={`/guests/${g.id}`} aria-label="View guest">
+                      <Icon name="chevron-right" className="icon-sm" />
+                    </Link>
                   </td>
                 </tr>
               ))}

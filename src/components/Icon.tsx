@@ -58,6 +58,7 @@ export const ICONS: Record<string, string> = {
   info: "M12 21a9 9 0 100-18 9 9 0 000 18zM12 16v-4M12 8h.01",
   "shield-check": "M9 12l2 2 4-4M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
   lock: "M5 11h14v10H5zM7 11V7a5 5 0 0110 0v4",
+  "rotate-ccw": "M1 4v6h6M3.51 15a9 9 0 102.13-9.36L1 10",
 };
 
 export function Icon({

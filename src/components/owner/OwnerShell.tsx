@@ -13,6 +13,7 @@ export function OwnerShell({
   rooms,
   channels,
   demo,
+  onlineEnabled = false,
 }: {
   children: React.ReactNode;
   user: { name: string; role: string };
@@ -20,6 +21,7 @@ export function OwnerShell({
   rooms: QuickAddRoom[];
   channels: QuickAddChannel[];
   demo: boolean;
+  onlineEnabled?: boolean;
 }) {
   const path = usePathname();
   const title = titleForPath(path);
@@ -110,7 +112,12 @@ export function OwnerShell({
         {children}
       </main>
 
-      <QuickAdd propertyId={property.id} rooms={rooms} channels={channels} />
+      <QuickAdd
+        propertyId={property.id}
+        rooms={rooms}
+        channels={channels}
+        onlineEnabled={onlineEnabled}
+      />
     </div>
   );
 }

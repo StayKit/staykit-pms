@@ -129,6 +129,64 @@ describe("MCP route — authorized via the dev fallback", () => {
   });
 });
 
+describe("MCP route — resources & prompts", () => {
+  it("advertises resources and prompts in initialize capabilities", async () => {
+    const body = await (await rpc({ jsonrpc: "2.0", id: 20, method: "initialize" })).json();
+    expect(body.result.capabilities.resources).toBeTruthy();
+    expect(body.result.capabilities.prompts).toBeTruthy();
+  });
+
+  it("lists and reads a resource", async () => {
+    const list = await (await rpc({ jsonrpc: "2.0", id: 21, method: "resources/list" })).json();
+    expect(
+      list.result.resources.some((r: { uri: string }) => r.uri === "staykit://properties"),
+    ).toBe(true);
+    expect(list.result.resourceTemplates.length).toBeGreaterThan(0);
+
+    const read = await (
+      await rpc({
+        jsonrpc: "2.0",
+        id: 22,
+        method: "resources/read",
+        params: { uri: "staykit://properties" },
+      })
+    ).json();
+    expect(read.result.contents[0].mimeType).toBe("application/json");
+  });
+
+  it("returns an error for an unknown resource uri", async () => {
+    const body = await (
+      await rpc({
+        jsonrpc: "2.0",
+        id: 23,
+        method: "resources/read",
+        params: { uri: "staykit://nope" },
+      })
+    ).json();
+    expect(body.error.code).toBe(-32602);
+  });
+
+  it("lists prompts and gets one", async () => {
+    const list = await (await rpc({ jsonrpc: "2.0", id: 24, method: "prompts/list" })).json();
+    expect(list.result.prompts.map((p: { name: string }) => p.name)).toContain("daily_briefing");
+
+    const got = await (
+      await rpc({
+        jsonrpc: "2.0",
+        id: 25,
+        method: "prompts/get",
+        params: { name: "revenue_report", arguments: { from: "2026-03-01", to: "2026-03-31" } },
+      })
+    ).json();
+    expect(got.result.messages[0].content.text).toContain("2026-03-01");
+
+    const bad = await (
+      await rpc({ jsonrpc: "2.0", id: 26, method: "prompts/get", params: { name: "ghost" } })
+    ).json();
+    expect(bad.error.code).toBe(-32602);
+  });
+});
+
 describe("MCP route — auth enforcement", () => {
   it("returns 401 with a WWW-Authenticate header when unauthenticated in production", async () => {
     vi.stubEnv("NODE_ENV", "production");

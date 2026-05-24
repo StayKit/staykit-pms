@@ -46,7 +46,7 @@ describe("QuickAdd extra interactions", () => {
 
   it("lets the user pick a payment option and go back from review", () => {
     render(<QuickAdd propertyId="p1" rooms={rooms} channels={channels} />);
-    fireEvent.click(screen.getByRole("button", { name: /Already paid/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Mark as paid \(cash\)/ }));
     fillGuest();
     fireEvent.click(screen.getByRole("button", { name: /Review/ }));
     expect(screen.getByText("Confirm details")).toBeTruthy();

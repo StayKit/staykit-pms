@@ -8,8 +8,16 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { getKpis } from "../reports";
 import { computeAvailability } from "../booking/availability";
-import { createBooking, cancelBooking, checkInBooking, checkOutBooking } from "../booking/engine";
-import { createPaymentLinkForBooking } from "../payments/service";
+import {
+  createBooking,
+  cancelBooking,
+  checkInBooking,
+  checkOutBooking,
+  moveBooking,
+} from "../booking/engine";
+import { createPaymentLinkForBooking, createRefund, RefundError } from "../payments/service";
+import { quoteRefund, type CancellationReason } from "../booking/cancellation";
+import { enqueueNotification, type TriggerKey } from "../notify/dispatch";
 import { parseYmd, today, addDays } from "../dates";
 import type { Permission } from "../rbac/policy";
 
@@ -377,31 +385,257 @@ export const TOOLS: ToolDef[] = [
   {
     name: "initiate_refund",
     scope: "payments:refund",
-    description: "Initiate a refund. Requires human-in-the-loop confirmation.",
+    description:
+      "Refund a booking. Requires human-in-the-loop: call once to preview the policy " +
+      "amount, then again with confirm=true to process. Reason defaults to 'Guest cancellation'.",
     requiresApproval: true,
     inputSchema: z.object({
       bookingId: z.string(),
-      amountPaise: z.number(),
+      amountPaise: z.number().optional(),
+      reason: z.string().optional(),
       confirm: z.boolean().optional(),
     }),
     jsonSchema: obj(
       {
         bookingId: { type: "string" },
         amountPaise: { type: "number" },
+        reason: { type: "string" },
         confirm: { type: "boolean" },
       },
-      ["bookingId", "amountPaise"],
+      ["bookingId"],
     ),
     async run(args, ctx) {
       assertScope(ctx, "payments:refund");
+      const bookingId = String(args.bookingId);
+      await ownsBooking(ctx, bookingId);
+      const reason = (args.reason as CancellationReason | undefined) ?? "Guest cancellation";
+      const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+      if (!booking) throw new Error("Booking not found");
+
+      const quote = quoteRefund({
+        amountPaidPaise: booking.amountPaid,
+        checkIn: booking.checkIn,
+        reason,
+      });
+      const amountPaise = (args.amountPaise as number | undefined) ?? quote.refundablePaise;
+
       if (!args.confirm) {
         return {
           needsConfirmation: true,
+          policy: quote.explanation,
+          refundablePaise: quote.refundablePaise,
+          amountToRefundPaise: amountPaise,
           message: "Re-call with confirm=true to process this refund.",
         };
       }
-      // Recorded but not auto-executed against Razorpay from the AI path in v1.
-      return { status: "PENDING_OWNER_APPROVAL" };
+      try {
+        const { refund, mock } = await createRefund(bookingId, {
+          amountPaise,
+          reason,
+          initiatedById: ctx.userId,
+          actorName: ctx.name + " via Claude (AI)",
+          actorType: "MCP",
+        });
+        return { status: refund.status, amountPaise: refund.amount, mock };
+      } catch (e) {
+        if (e instanceof RefundError) return { error: e.message };
+        throw e;
+      }
+    },
+  },
+  {
+    name: "modify_booking",
+    scope: "bookings:write",
+    description: "Move a booking to a different room and/or dates. Rates and GST are recalculated.",
+    inputSchema: z.object({
+      bookingId: z.string(),
+      roomId: z.string().optional(),
+      checkIn: z.string().optional(),
+      checkOut: z.string().optional(),
+    }),
+    jsonSchema: obj(
+      {
+        bookingId: { type: "string" },
+        roomId: { type: "string" },
+        checkIn: { type: "string" },
+        checkOut: { type: "string" },
+      },
+      ["bookingId"],
+    ),
+    async run(args, ctx) {
+      assertScope(ctx, "bookings:write");
+      await ownsBooking(ctx, String(args.bookingId));
+      const b = await moveBooking({
+        bookingId: String(args.bookingId),
+        ownerId: ctx.ownerId,
+        roomId: args.roomId ? String(args.roomId) : undefined,
+        checkIn: args.checkIn ? String(args.checkIn) : undefined,
+        checkOut: args.checkOut ? String(args.checkOut) : undefined,
+        actorName: ctx.name + " via Claude (AI)",
+        actorType: "MCP",
+      });
+      return { id: b.id, ref: b.ref, total: b.totalAmount };
+    },
+  },
+  {
+    name: "block_room",
+    scope: "properties:write",
+    description: "Block a room for maintenance/owner use across a date range (YYYY-MM-DD).",
+    inputSchema: z.object({
+      propertyId: z.string(),
+      roomId: z.string(),
+      from: z.string(),
+      to: z.string(),
+      reason: z.string(),
+    }),
+    jsonSchema: obj(
+      {
+        propertyId: { type: "string" },
+        roomId: { type: "string" },
+        from: { type: "string" },
+        to: { type: "string" },
+        reason: { type: "string" },
+      },
+      ["propertyId", "roomId", "from", "to", "reason"],
+    ),
+    async run(args, ctx) {
+      assertScope(ctx, "properties:write");
+      const propertyId = String(args.propertyId);
+      const room = await prisma.room.findFirst({
+        where: { id: String(args.roomId), propertyId, property: { ownerId: ctx.ownerId } },
+      });
+      if (!room) throw new Error("Room not found in your workspace.");
+      const start = parseYmd(String(args.from));
+      const end = parseYmd(String(args.to));
+      if (end <= start) throw new Error("End date must be after start date.");
+      const clash = await prisma.bookingRoom.findFirst({
+        where: { roomId: room.id, date: { gte: start, lt: end } },
+      });
+      if (clash) throw new Error("Those dates overlap an existing booking.");
+      const block = await prisma.maintenanceBlock.create({
+        data: {
+          propertyId,
+          roomId: room.id,
+          startDate: start,
+          endDate: end,
+          reason: String(args.reason),
+          createdById: ctx.userId,
+        },
+      });
+      return { id: block.id };
+    },
+  },
+  {
+    name: "unblock_room",
+    scope: "properties:write",
+    description: "Remove a maintenance block by id.",
+    inputSchema: z.object({ blockId: z.string() }),
+    jsonSchema: obj({ blockId: { type: "string" } }, ["blockId"]),
+    async run(args, ctx) {
+      assertScope(ctx, "properties:write");
+      const block = await prisma.maintenanceBlock.findFirst({
+        where: { id: String(args.blockId), property: { ownerId: ctx.ownerId } },
+      });
+      if (!block) throw new Error("Block not found in your workspace.");
+      await prisma.maintenanceBlock.delete({ where: { id: block.id } });
+      return { ok: true };
+    },
+  },
+  {
+    name: "list_rate_plans",
+    scope: "properties:read",
+    description: "List a property's rate plans with their per-room-type overrides.",
+    inputSchema: z.object({ propertyId: z.string() }),
+    jsonSchema: obj({ propertyId: { type: "string" } }, ["propertyId"]),
+    async run(args, ctx) {
+      assertScope(ctx, "properties:read");
+      return prisma.ratePlan.findMany({
+        where: { propertyId: String(args.propertyId), property: { ownerId: ctx.ownerId } },
+        orderBy: { priority: "desc" },
+        include: { overrides: true },
+      });
+    },
+  },
+  {
+    name: "upsert_rate_plan",
+    scope: "properties:write",
+    description: "Create a rate plan with optional per-room-type nightly overrides (paise).",
+    inputSchema: z.object({
+      propertyId: z.string(),
+      name: z.string(),
+      startDate: z.string(),
+      endDate: z.string(),
+      priority: z.number().optional(),
+      overrides: z.array(z.object({ roomTypeId: z.string(), amountPaise: z.number() })).optional(),
+    }),
+    jsonSchema: obj(
+      {
+        propertyId: { type: "string" },
+        name: { type: "string" },
+        startDate: { type: "string" },
+        endDate: { type: "string" },
+        priority: { type: "number" },
+        overrides: { type: "array" },
+      },
+      ["propertyId", "name", "startDate", "endDate"],
+    ),
+    async run(args, ctx) {
+      assertScope(ctx, "properties:write");
+      const property = await prisma.property.findFirst({
+        where: { id: String(args.propertyId), ownerId: ctx.ownerId },
+      });
+      if (!property) throw new Error("Property not found in your workspace.");
+      const overrides = (args.overrides as { roomTypeId: string; amountPaise: number }[]) ?? [];
+      const plan = await prisma.ratePlan.create({
+        data: {
+          propertyId: property.id,
+          name: String(args.name),
+          priority: (args.priority as number) ?? 0,
+          startDate: parseYmd(String(args.startDate)),
+          endDate: parseYmd(String(args.endDate)),
+          overrides: {
+            create: overrides.map((o) => ({
+              roomTypeId: o.roomTypeId,
+              amount: Math.round(o.amountPaise),
+            })),
+          },
+        },
+      });
+      return { id: plan.id, name: plan.name };
+    },
+  },
+  {
+    name: "send_notification",
+    scope: "notifications:send",
+    description:
+      "Queue a templated message to a booking's guest for a trigger (e.g. PAYMENT_LINK_SENT, " +
+      "PRE_ARRIVAL_24H, POST_CHECKOUT_THANKS). The owner's active templates decide the channels.",
+    inputSchema: z.object({ bookingId: z.string(), triggerKey: z.string() }),
+    jsonSchema: obj({ bookingId: { type: "string" }, triggerKey: { type: "string" } }, [
+      "bookingId",
+      "triggerKey",
+    ]),
+    async run(args, ctx) {
+      assertScope(ctx, "notifications:send");
+      const bookingId = String(args.bookingId);
+      await ownsBooking(ctx, bookingId);
+      const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+          property: true,
+          guests: { where: { isPrimary: true }, include: { guest: true } },
+        },
+      });
+      const guest = booking?.guests[0]?.guest;
+      if (!booking || !guest) throw new Error("Booking has no guest to notify.");
+      const logs = await enqueueNotification({
+        ownerId: ctx.ownerId,
+        triggerKey: String(args.triggerKey) as TriggerKey,
+        to: guest.phone,
+        bookingId,
+        scope: { guest, booking, property: booking.property },
+      });
+      return { queued: logs.length };
     },
   },
 ];

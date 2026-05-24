@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
-import { shortDate, nightsBetween } from "@/lib/dates";
+import { shortDate, nightsBetween, ymd } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { deriveState } from "@/components/ui";
+import { onlinePaymentsEnabled } from "@/lib/payments/razorpay/client";
 import { BookingDetailView, type BookingDetailData } from "@/components/owner/BookingDetailView";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
       rooms: { include: { room: true } },
       payments: { orderBy: { createdAt: "asc" } },
       paymentLinks: { orderBy: { createdAt: "asc" } },
+      refunds: { orderBy: { createdAt: "asc" } },
       notifications: { orderBy: { createdAt: "desc" } },
     },
   });
@@ -40,6 +42,15 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     orderBy: { createdAt: "asc" },
   });
 
+  const canMove = b.status !== "CANCELLED" && b.status !== "CHECKED_OUT";
+  const propertyRooms = canMove
+    ? await prisma.room.findMany({
+        where: { propertyId: b.propertyId, active: true },
+        include: { roomType: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
+
   const guest = b.guests[0]?.guest;
   const room = b.rooms[0]?.room;
   const nights = nightsBetween(b.checkIn, b.checkOut);
@@ -47,31 +58,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   const nightly = nights ? Math.round(b.subtotal / nights) : b.subtotal;
   const taxRate = b.subtotal > 0 ? Math.round((b.taxAmount / b.subtotal) * 100) : 0;
 
-  const payments: BookingDetailData["payments"] = [];
-  for (const link of b.paymentLinks) {
-    payments.push({
-      icon: "send",
-      tone: "",
-      title: `Payment link created (${inr(link.amount)})`,
-      sub: `${link.notifyVia.toUpperCase()} · ${fmtTime(link.createdAt)}`,
-    });
-  }
-  for (const p of b.payments) {
-    payments.push({
-      icon: "check",
-      tone: "ok",
-      title: `Razorpay received ${inr(p.amount)}`,
-      sub: `${(p.method ?? "payment").toUpperCase()} · ${fmtTime(p.capturedAt ?? p.createdAt)}`,
-    });
-  }
-  if (due > 0) {
-    payments.push({
-      icon: "clock",
-      tone: "empty",
-      title: `${inr(due)} still to collect`,
-      sub: "Awaiting payment",
-    });
-  }
+  const payments = buildPaymentsTimeline(b, due);
 
   const data: BookingDetailData = {
     id: b.id,
@@ -104,6 +91,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
       tax: inr(b.taxAmount),
       total: inr(b.totalAmount),
       paid: inr(b.amountPaid),
+      paidRaw: b.amountPaid,
       due: inr(due),
       dueRaw: due,
       taxLabel: taxRate ? `${taxRate}% GST` : "No GST (owner unregistered)",
@@ -126,9 +114,78 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
       when: fmtTime(a.createdAt),
     })),
     notes: b.notes,
+    onlineEnabled: await onlinePaymentsEnabled(),
+    move:
+      canMove && room
+        ? {
+            roomId: room.id,
+            checkInYmd: ymd(b.checkIn),
+            checkOutYmd: ymd(b.checkOut),
+            rooms: propertyRooms.map((r) => ({
+              id: r.id,
+              label: `${r.number ? r.number + " — " : ""}${r.name} (${r.roomType.name})`,
+            })),
+          }
+        : null,
   };
 
   return <BookingDetailView data={data} />;
+}
+
+const REFUND_ICON: Record<string, string> = {
+  PROCESSED: "rotate-ccw",
+  FAILED: "x",
+  CREATED: "clock",
+};
+
+function buildPaymentsTimeline(
+  b: {
+    paymentLinks: { amount: number; notifyVia: string; createdAt: Date }[];
+    payments: { amount: number; method: string | null; capturedAt: Date | null; createdAt: Date }[];
+    refunds: {
+      amount: number;
+      status: string;
+      reason: string | null;
+      processedAt: Date | null;
+      createdAt: Date;
+    }[];
+  },
+  due: number,
+): BookingDetailData["payments"] {
+  const rows: BookingDetailData["payments"] = [];
+  for (const link of b.paymentLinks) {
+    rows.push({
+      icon: "send",
+      tone: "",
+      title: `Payment link created (${inr(link.amount)})`,
+      sub: `${link.notifyVia.toUpperCase()} · ${fmtTime(link.createdAt)}`,
+    });
+  }
+  for (const p of b.payments) {
+    rows.push({
+      icon: "check",
+      tone: "ok",
+      title: `Razorpay received ${inr(p.amount)}`,
+      sub: `${(p.method ?? "payment").toUpperCase()} · ${fmtTime(p.capturedAt ?? p.createdAt)}`,
+    });
+  }
+  for (const r of b.refunds) {
+    rows.push({
+      icon: REFUND_ICON[r.status] ?? "clock",
+      tone: r.status === "PROCESSED" ? "" : "empty",
+      title: `Refund ${inr(r.amount)} — ${r.status.toLowerCase()}`,
+      sub: `${r.reason ?? "refund"} · ${fmtTime(r.processedAt ?? r.createdAt)}`,
+    });
+  }
+  if (due > 0) {
+    rows.push({
+      icon: "clock",
+      tone: "empty",
+      title: `${inr(due)} still to collect`,
+      sub: "Awaiting payment",
+    });
+  }
+  return rows;
 }
 
 function fmtTime(d: Date): string {

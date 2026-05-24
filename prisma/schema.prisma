@@ -75,6 +75,7 @@ model Property {
   checkInTime        String             @default("14:00")
   checkOutTime       String             @default("11:00")
   cancellationPolicy String?
+  paymentInstructions String?           // shown to guests for manual/cash payment (UPI, bank, "pay on arrival")
   invoicePrefix      String             @default("INV")
   invoiceCounter     Int                @default(0)
   defaultCurrency    String             @default("INR")

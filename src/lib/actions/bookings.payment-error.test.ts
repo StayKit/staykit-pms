@@ -6,6 +6,10 @@ vi.mock("@/lib/payments/service", () => ({
   createPaymentLinkForBooking: vi.fn(),
   applyPayment: vi.fn(),
 }));
+// Force online payments on so we reach the service-error path (default is cash).
+vi.mock("@/lib/payments/razorpay/client", () => ({
+  onlinePaymentsEnabled: vi.fn().mockResolvedValue(true),
+}));
 
 import { requireContext } from "@/lib/auth/context";
 import { createPaymentLinkForBooking } from "@/lib/payments/service";

@@ -26,10 +26,12 @@ export function QuickAdd({
   propertyId,
   rooms,
   channels,
+  onlineEnabled = false,
 }: {
   propertyId: string;
   rooms: QuickAddRoom[];
   channels: QuickAddChannel[];
+  onlineEnabled?: boolean;
 }) {
   const router = useRouter();
   const sp = useSearchParams();
@@ -50,7 +52,7 @@ export function QuickAdd({
     adults: 2,
     children: 0,
     channelKey: "direct",
-    payment: "link" as "link" | "paid" | "later",
+    payment: "later" as "link" | "paid" | "later",
     notes: "",
     nightlyRateRupees: rooms[0]?.baseRateRupees ?? 0,
   });
@@ -236,9 +238,11 @@ export function QuickAdd({
               <label>Payment</label>
               <div className="chips">
                 {[
-                  { id: "link", label: "Send payment link", icon: "send" },
-                  { id: "paid", label: "Already paid", icon: "check" },
-                  { id: "later", label: "Collect at check-in", icon: "clock" },
+                  { id: "later", label: "Collect manually", icon: "clock" },
+                  { id: "paid", label: "Mark as paid (cash)", icon: "check" },
+                  ...(onlineEnabled
+                    ? [{ id: "link", label: "Send online link", icon: "send" }]
+                    : []),
                 ].map((p) => (
                   <button
                     key={p.id}

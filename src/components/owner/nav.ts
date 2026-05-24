@@ -13,6 +13,9 @@ export const NAV: NavEntry[] = [
   { href: "/guests", label: "Guests", icon: "users", section: "workspace" },
   { href: "/notifications", label: "Notifications", icon: "bell", section: "workspace" },
   { href: "/reports", label: "Reports", icon: "bar-chart", section: "workspace" },
+  { href: "/properties", label: "Properties", icon: "home", section: "advanced" },
+  { href: "/channels", label: "Channels", icon: "tag", section: "advanced" },
+  { href: "/team", label: "Team", icon: "users", section: "advanced" },
   { href: "/assistant", label: "MCP for Claude", icon: "sparkles", section: "advanced" },
   { href: "/settings", label: "Settings", icon: "settings", section: "advanced" },
 ];
@@ -24,6 +27,9 @@ export const TITLES: Record<string, { h: string; s: string }> = {
   "/guests": { h: "Guests", s: "Address book" },
   "/notifications": { h: "Notifications", s: "Templates & automations" },
   "/reports": { h: "Reports", s: "Occupancy, revenue & GST" },
+  "/properties": { h: "Properties", s: "Rooms, rates & inventory" },
+  "/channels": { h: "Channels", s: "Booking source attribution" },
+  "/team": { h: "Team", s: "Users, roles & access" },
   "/assistant": { h: "MCP for Claude.ai", s: "AI assistant settings" },
   "/settings": { h: "Settings", s: "Workspace & integrations" },
 };

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getAppContext } from "@/lib/auth/context";
 import { getKpis, sourceMix } from "@/lib/reports";
 import { today, addDays } from "@/lib/dates";
@@ -32,13 +33,16 @@ export default async function ReportsPage() {
           <h2 style={{ fontSize: 22 }}>Reports</h2>
           <div className="sub">Performance and tax-ready summaries</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn">
-            <Icon name="calendar" className="icon-sm" /> This month
-          </button>
-          <button className="btn">
-            <Icon name="external" className="icon-sm" /> Export
-          </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link className="btn" href="/reports/payments">
+            <Icon name="credit-card" className="icon-sm" /> Payments
+          </Link>
+          <Link className="btn" href="/reports/audit">
+            <Icon name="shield-check" className="icon-sm" /> Audit
+          </Link>
+          <a className="btn" href="/api/reports/bookings.csv">
+            <Icon name="external" className="icon-sm" /> Export CSV
+          </a>
         </div>
       </div>
 

@@ -31,6 +31,42 @@ export function isConfigured(): boolean {
   return !!(keyId() && keySecret());
 }
 
+/**
+ * Online payments (Razorpay links) are OFF by default. They turn on only when the
+ * keys are present AND the credentials actually work — otherwise everything stays
+ * cash/manual. We verify against a cheap authenticated endpoint and cache the result.
+ */
+let credCache: { ok: boolean; at: number } | null = null;
+const CRED_TTL_MS = 10 * 60_000;
+
+export function resetCredentialCache() {
+  credCache = null;
+}
+
+export async function verifyRazorpayCredentials(): Promise<{ ok: boolean; error?: string }> {
+  if (!isConfigured()) return { ok: false, error: "Razorpay keys are not set." };
+  try {
+    const auth = Buffer.from(`${keyId()}:${keySecret()}`).toString("base64");
+    const res = await fetch("https://api.razorpay.com/v1/payments?count=1", {
+      headers: { Authorization: `Basic ${auth}` },
+    });
+    if (res.ok) return { ok: true };
+    return { ok: false, error: `Razorpay rejected the credentials (HTTP ${res.status}).` };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not reach Razorpay." };
+  }
+}
+
+/** True only when keys are present and verified valid (cached). Default: false → cash. */
+export async function onlinePaymentsEnabled(): Promise<boolean> {
+  if (!isConfigured()) return false;
+  const now = Date.now();
+  if (credCache && now - credCache.at < CRED_TTL_MS) return credCache.ok;
+  const ok = (await verifyRazorpayCredentials()).ok;
+  credCache = { ok, at: now };
+  return ok;
+}
+
 export interface CreatePaymentLinkParams {
   amountPaise: number;
   referenceId: string; // booking ref

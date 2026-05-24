@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { TOOLS, TOOL_CATALOG, getTool, assertScope, ScopeError, type McpContext } from "./tools";
 import { createBooking } from "../booking/engine";
+import { applyPayment } from "../payments/service";
 import { prisma } from "@/lib/db";
 import { today, addDays, ymd } from "../dates";
 import { resetDb, seedBasic, type Fixture } from "../../../test/factories";
@@ -207,17 +208,32 @@ describe("write tools", () => {
     expect(r.shortUrl).toContain("/pay/");
   });
 
-  it("initiate_refund needs human confirmation, then records pending approval", async () => {
-    const first = (await run("initiate_refund", { bookingId: "b", amountPaise: 1000 })) as {
-      needsConfirmation: boolean;
-    };
+  it("initiate_refund previews the policy, then processes on confirm", async () => {
+    const b = await aBooking();
+    await applyPayment(b.id, b.totalAmount, { method: "cash" });
+
+    const first = (await run("initiate_refund", {
+      bookingId: b.id,
+      amountPaise: 1000_00,
+    })) as { needsConfirmation: boolean; amountToRefundPaise: number };
     expect(first.needsConfirmation).toBe(true);
+    expect(first.amountToRefundPaise).toBe(1000_00);
+
     const confirmed = (await run("initiate_refund", {
-      bookingId: "b",
-      amountPaise: 1000,
+      bookingId: b.id,
+      amountPaise: 1000_00,
       confirm: true,
-    })) as { status: string };
-    expect(confirmed.status).toBe("PENDING_OWNER_APPROVAL");
+    })) as { status: string; mock: boolean };
+    expect(confirmed.status).toBe("PROCESSED");
+    expect(confirmed.mock).toBe(true);
+    const after = await prisma.booking.findUnique({ where: { id: b.id } });
+    expect(after?.amountPaid).toBe(b.totalAmount - 1000_00);
+  });
+
+  it("initiate_refund rejects a booking outside the workspace", async () => {
+    await expect(run("initiate_refund", { bookingId: "missing", confirm: true })).rejects.toThrow(
+      /workspace/,
+    );
   });
 
   it("initiate_refund enforces the payments:refund scope", async () => {
@@ -225,6 +241,86 @@ describe("write tools", () => {
       run(
         "initiate_refund",
         { bookingId: "b", amountPaise: 1 },
+        ctx({ scopes: ["bookings:read"] }),
+      ),
+    ).rejects.toThrow(ScopeError);
+  });
+});
+
+describe("inventory & ops tools", () => {
+  it("modify_booking moves a booking and recomputes the total", async () => {
+    const b = await aBooking({ checkIn: "2026-06-10", checkOut: "2026-06-12" });
+    const r = (await run("modify_booking", {
+      bookingId: b.id,
+      checkIn: "2026-06-10",
+      checkOut: "2026-06-13",
+    })) as { total: number };
+    expect(r.total).toBe(6300_00 * 3);
+  });
+
+  it("block_room then unblock_room", async () => {
+    const blk = (await run("block_room", {
+      propertyId: fx.property.id,
+      roomId: fx.room.id,
+      from: "2026-10-01",
+      to: "2026-10-05",
+      reason: "Repaint",
+    })) as { id: string };
+    expect(await prisma.maintenanceBlock.count()).toBe(1);
+    const un = (await run("unblock_room", { blockId: blk.id })) as { ok: boolean };
+    expect(un.ok).toBe(true);
+    expect(await prisma.maintenanceBlock.count()).toBe(0);
+  });
+
+  it("block_room rejects overlap with a booking", async () => {
+    await aBooking({ checkIn: "2026-11-01", checkOut: "2026-11-03" });
+    await expect(
+      run("block_room", {
+        propertyId: fx.property.id,
+        roomId: fx.room.id,
+        from: "2026-11-01",
+        to: "2026-11-03",
+        reason: "x",
+      }),
+    ).rejects.toThrow(/overlap/);
+  });
+
+  it("upsert_rate_plan creates a plan, list_rate_plans returns it", async () => {
+    await run("upsert_rate_plan", {
+      propertyId: fx.property.id,
+      name: "Peak",
+      startDate: "2026-12-20",
+      endDate: "2026-12-31",
+      priority: 9,
+      overrides: [{ roomTypeId: fx.roomType.id, amountPaise: 9000_00 }],
+    });
+    const plans = (await run("list_rate_plans", { propertyId: fx.property.id })) as unknown[];
+    expect(plans).toHaveLength(1);
+  });
+
+  it("send_notification queues messages for the booking's guest", async () => {
+    const b = await aBooking();
+    await prisma.notificationTemplate.create({
+      data: {
+        ownerId: fx.owner.id,
+        channel: "SMS",
+        triggerKey: "PRE_ARRIVAL_24H",
+        name: "reminder",
+        body: "see you {{guest.name}}",
+      },
+    });
+    const r = (await run("send_notification", {
+      bookingId: b.id,
+      triggerKey: "PRE_ARRIVAL_24H",
+    })) as { queued: number };
+    expect(r.queued).toBe(1);
+  });
+
+  it("inventory tools enforce their scopes", async () => {
+    await expect(
+      run(
+        "block_room",
+        { propertyId: "p", roomId: "r", from: "a", to: "b", reason: "x" },
         ctx({ scopes: ["bookings:read"] }),
       ),
     ).rejects.toThrow(ScopeError);

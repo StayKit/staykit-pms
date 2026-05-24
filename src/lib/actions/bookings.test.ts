@@ -4,6 +4,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth/context", () => ({ requireContext: vi.fn() }));
 
 import { requireContext } from "@/lib/auth/context";
+import { resetCredentialCache } from "@/lib/payments/razorpay/client";
 import {
   createBookingAction,
   checkInAction,
@@ -19,8 +20,24 @@ import { resetDb, seedBasic, type Fixture } from "../../../test/factories";
 const mockCtx = requireContext as unknown as Mock;
 let fx: Fixture;
 
+/** Turn on online payments realistically: valid keys + a Razorpay that answers OK. */
+function enableOnline() {
+  vi.stubEnv("RAZORPAY_KEY_ID_TEST", "rzp_test_x");
+  vi.stubEnv("RAZORPAY_KEY_SECRET_TEST", "secret");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "plink_live", short_url: "https://rzp.io/i/live" }),
+    }),
+  );
+}
+
 beforeEach(async () => {
   await resetDb();
+  resetCredentialCache();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   fx = await seedBasic({ gstin: null });
   mockCtx.mockResolvedValue({
     ownerId: fx.owner.id,
@@ -67,10 +84,17 @@ describe("createBookingAction", () => {
     expect(b?.amountPaid).toBe(b?.totalAmount);
   });
 
-  it("creates a payment link when payment=link", async () => {
+  it("creates an online link when payment=link and online payments are enabled", async () => {
+    enableOnline();
     const res = await createBookingAction(input({ payment: "link" }));
     const links = await prisma.paymentLink.count({ where: { bookingId: res.bookingId } });
     expect(links).toBe(1);
+  });
+
+  it("does NOT create a link when online payments are off (cash-first default)", async () => {
+    const res = await createBookingAction(input({ payment: "link" }));
+    const links = await prisma.paymentLink.count({ where: { bookingId: res.bookingId } });
+    expect(links).toBe(0);
   });
 
   it("returns a friendly error on double-booking", async () => {
@@ -138,11 +162,19 @@ describe("booking lifecycle actions", () => {
     expect(b?.amountPaid).toBe(b?.totalAmount);
   });
 
-  it("sendPaymentLinkAction returns the (mock) link", async () => {
+  it("sendPaymentLinkAction sends a link when online payments are enabled", async () => {
+    enableOnline();
     const id = await make();
     const res = await sendPaymentLinkAction(id);
     expect(res.ok).toBe(true);
     expect(res.message).toMatch(/link/i);
+  });
+
+  it("sendPaymentLinkAction refuses when online payments are off (cash-first)", async () => {
+    const id = await make();
+    const res = await sendPaymentLinkAction(id);
+    expect(res.ok).toBe(false);
+    expect(res.message).toMatch(/online payments are off/i);
   });
 
   it("lifecycle actions 404 on unknown bookings", async () => {
@@ -154,6 +186,7 @@ describe("booking lifecycle actions", () => {
   });
 
   it("sendPaymentLinkAction reports the error when nothing is left to collect", async () => {
+    enableOnline();
     const id = await make();
     await markPaidAction(id);
     const res = await sendPaymentLinkAction(id);

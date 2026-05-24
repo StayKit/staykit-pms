@@ -5,8 +5,13 @@ import { getGuestSession } from "@/lib/auth/session";
 import { shortDate, nightsBetween } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { Icon } from "@/components/Icon";
+import { onlinePaymentsEnabled } from "@/lib/payments/razorpay/client";
 
 export const dynamic = "force-dynamic";
+
+const DEFAULT_PAY_INSTRUCTIONS =
+  "Please pay by cash at check-in, or message the host for UPI / bank transfer details. " +
+  "Your booking is confirmed — the host verifies your payment after you pay.";
 
 export default async function GuestBookingDetail({ params }: { params: Promise<{ id: string }> }) {
   const session = await getGuestSession();
@@ -27,6 +32,7 @@ export default async function GuestBookingDetail({ params }: { params: Promise<{
   const due = b.totalAmount - b.amountPaid;
   const nights = nightsBetween(b.checkIn, b.checkOut);
   const payLink = b.paymentLinks[0];
+  const onlineEnabled = await onlinePaymentsEnabled();
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
@@ -55,11 +61,10 @@ export default async function GuestBookingDetail({ params }: { params: Promise<{
           </div>
 
           <div style={{ padding: 18 }}>
-            {due > 0 && (
-              <a
-                href={payLink?.shortUrl ?? "#"}
+            {due <= 0 ? (
+              <div
                 style={{
-                  background: "var(--accent-soft)",
+                  background: "var(--surface-2)",
                   borderRadius: 12,
                   padding: 14,
                   display: "flex",
@@ -67,15 +72,63 @@ export default async function GuestBookingDetail({ params }: { params: Promise<{
                   gap: 10,
                 }}
               >
-                <Icon name="indian-rupee" className="icon" style={{ color: "var(--accent)" }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{inr(due)} still to pay</div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
-                    Secure payment via Razorpay
+                <Icon name="check" className="icon" style={{ color: "var(--st-checkedin)" }} />
+                <div style={{ fontWeight: 600, fontSize: 13 }}>
+                  Paid in full · {inr(b.totalAmount)}
+                </div>
+              </div>
+            ) : (
+              <>
+                {onlineEnabled && payLink ? (
+                  <a
+                    href={payLink.shortUrl}
+                    style={{
+                      background: "var(--accent-soft)",
+                      borderRadius: 12,
+                      padding: 14,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <Icon name="indian-rupee" className="icon" style={{ color: "var(--accent)" }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>
+                        {inr(due)} — pay online now
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
+                        Secure payment via Razorpay
+                      </div>
+                    </div>
+                    <Icon
+                      name="chevron-right"
+                      className="icon-sm"
+                      style={{ color: "var(--accent)" }}
+                    />
+                  </a>
+                ) : null}
+
+                <div
+                  style={{
+                    background: "var(--surface-2)",
+                    borderRadius: 12,
+                    padding: 14,
+                    marginTop: onlineEnabled && payLink ? 10 : 0,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Icon name="clock" className="icon-sm" style={{ color: "var(--st-unpaid)" }} />
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>
+                      {inr(due)} due · Awaiting payment confirmation
+                    </div>
+                  </div>
+                  <div
+                    style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, lineHeight: 1.6 }}
+                  >
+                    {b.property.paymentInstructions || DEFAULT_PAY_INSTRUCTIONS}
                   </div>
                 </div>
-                <Icon name="chevron-right" className="icon-sm" style={{ color: "var(--accent)" }} />
-              </a>
+              </>
             )}
 
             <div

@@ -136,6 +136,67 @@ describe("POST /api/webhooks/razorpay", () => {
     expect(b?.amountPaid).toBe(0); // unchanged — amount must be > 0
   });
 
+  it("settles a refund on refund.processed", async () => {
+    // Capture a payment, then stage a CREATED refund the webhook will settle.
+    await post(JSON.stringify(event()));
+    const payment = await prisma.payment.findUnique({ where: { razorpayPaymentId: "pay_1" } });
+    await prisma.refund.create({
+      data: {
+        bookingId,
+        paymentId: payment!.id,
+        amount: 2000_00,
+        status: "CREATED",
+        razorpayRefundId: "rfnd_1",
+        initiatedById: fx.user.id,
+      },
+    });
+
+    const evt = {
+      event: "refund.processed",
+      payload: { refund: { entity: { id: "rfnd_1", amount: 2000_00, status: "processed" } } },
+    };
+    const res = await post(JSON.stringify(evt), { "x-razorpay-event-id": "evt_rfnd" });
+    expect(res.status).toBe(200);
+    const refund = await prisma.refund.findUnique({ where: { razorpayRefundId: "rfnd_1" } });
+    expect(refund?.status).toBe("PROCESSED");
+    const b = await prisma.booking.findUnique({ where: { id: bookingId } });
+    expect(b?.amountPaid).toBe(12600_00 - 2000_00);
+  });
+
+  it("marks a refund failed on refund.failed", async () => {
+    await post(JSON.stringify(event()));
+    const payment = await prisma.payment.findUnique({ where: { razorpayPaymentId: "pay_1" } });
+    await prisma.refund.create({
+      data: {
+        bookingId,
+        paymentId: payment!.id,
+        amount: 1000_00,
+        status: "CREATED",
+        razorpayRefundId: "rfnd_2",
+        initiatedById: fx.user.id,
+      },
+    });
+    const evt = {
+      event: "refund.failed",
+      payload: {
+        refund: { entity: { id: "rfnd_2", error_description: "bank declined" } },
+      },
+    };
+    const res = await post(JSON.stringify(evt), { "x-razorpay-event-id": "evt_rfnd_fail" });
+    expect(res.status).toBe(200);
+    const refund = await prisma.refund.findUnique({ where: { razorpayRefundId: "rfnd_2" } });
+    expect(refund?.status).toBe("FAILED");
+  });
+
+  it("ignores a refund event for an unknown refund id", async () => {
+    const evt = {
+      event: "refund.processed",
+      payload: { refund: { entity: { id: "rfnd_ghost" } } },
+    };
+    const res = await post(JSON.stringify(evt), { "x-razorpay-event-id": "evt_rfnd_ghost" });
+    expect(res.status).toBe(200);
+  });
+
   it("recovers (still 2xx) when the handler hits an unexpected error", async () => {
     // bookingId points at a non-existent booking → applyPayment throws; the handler
     // catches it and still returns 2xx so Razorpay won't retry forever.

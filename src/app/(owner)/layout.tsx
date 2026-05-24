@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getAppContext } from "@/lib/auth/context";
 import { prisma } from "@/lib/db";
 import { toRupees } from "@/lib/money";
+import { onlinePaymentsEnabled } from "@/lib/payments/razorpay/client";
 import { OwnerShell } from "@/components/owner/OwnerShell";
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
@@ -14,13 +15,14 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   });
   if (!property) redirect("/signin");
 
-  const [rooms, channels] = await Promise.all([
+  const [rooms, channels, onlineEnabled] = await Promise.all([
     prisma.room.findMany({
       where: { propertyId: property.id, active: true },
       include: { roomType: true },
       orderBy: { number: "asc" },
     }),
     prisma.channelSource.findMany({ where: { ownerId: ctx.ownerId, active: true } }),
+    onlinePaymentsEnabled(),
   ]);
 
   return (
@@ -28,6 +30,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
       user={{ name: ctx.name, role: ctx.role }}
       property={{ id: property.id, name: property.name }}
       demo={ctx.demo}
+      onlineEnabled={onlineEnabled}
       rooms={rooms.map((r) => ({
         id: r.id,
         label: `${r.number} — ${r.name} (${r.roomType.name})`,

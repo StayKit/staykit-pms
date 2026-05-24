@@ -62,6 +62,79 @@ export async function enqueueNotification(input: EnqueueInput) {
   return logs;
 }
 
+/** Max delivery attempts before a NotificationLog row is moved to the DLQ. */
+export const MAX_NOTIFY_ATTEMPTS = 8;
+
+/** Exponential backoff (ms) for a failed delivery: 2^attempts seconds, capped at 1h. */
+export function notifyBackoffMs(attempts: number): number {
+  return Math.min(2 ** attempts * 1000, 60 * 60 * 1000);
+}
+
+/**
+ * Drain due notifications: the in-process worker (lib/jobs/worker) calls this every
+ * few seconds. Claims QUEUED rows whose scheduledFor has passed, sends them, and on
+ * failure retries with exponential backoff up to MAX_NOTIFY_ATTEMPTS, then DLQ.
+ * Returns counts so the worker can log throughput.
+ */
+export async function drainNotifications(limit = 10): Promise<{ sent: number; failed: number }> {
+  const due = await prisma.notificationLog.findMany({
+    where: { status: "QUEUED", scheduledFor: { lte: new Date() } },
+    orderBy: { scheduledFor: "asc" },
+    take: limit,
+  });
+
+  let sent = 0;
+  let failed = 0;
+  for (const log of due) {
+    // Claim the row so a second worker tick can't double-send it.
+    const claim = await prisma.notificationLog.updateMany({
+      where: { id: log.id, status: "QUEUED" },
+      data: { status: "SENDING" },
+    });
+    if (claim.count === 0) continue;
+
+    try {
+      const body = log.payload ? (JSON.parse(log.payload).body ?? "") : "";
+      const tpl = log.templateId
+        ? await prisma.notificationTemplate.findUnique({ where: { id: log.templateId } })
+        : null;
+      const result = await providerFor(log.channel).send({
+        channel: log.channel,
+        to: log.to,
+        body,
+        subject: tpl?.subject ?? undefined,
+        dltTemplateId: tpl?.dltTemplateId ?? undefined,
+        whatsappTemplateName: tpl?.whatsappTemplateName ?? undefined,
+      });
+      await prisma.notificationLog.update({
+        where: { id: log.id },
+        data: {
+          status: "SENT",
+          sentAt: new Date(),
+          attempts: { increment: 1 },
+          providerMessageId: result.providerMessageId,
+          lastError: null,
+        },
+      });
+      sent += 1;
+    } catch (e) {
+      const attempts = log.attempts + 1;
+      const dead = attempts >= MAX_NOTIFY_ATTEMPTS;
+      await prisma.notificationLog.update({
+        where: { id: log.id },
+        data: {
+          status: dead ? "DLQ" : "QUEUED",
+          attempts,
+          lastError: e instanceof Error ? e.message : String(e),
+          scheduledFor: dead ? log.scheduledFor : new Date(Date.now() + notifyBackoffMs(attempts)),
+        },
+      });
+      failed += 1;
+    }
+  }
+  return { sent, failed };
+}
+
 /** Render + send one template immediately (used by tests and the test-send button). */
 export async function sendNow(templateId: string, to: string, scope: Record<string, unknown>) {
   const t = await prisma.notificationTemplate.findUnique({ where: { id: templateId } });

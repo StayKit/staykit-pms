@@ -404,7 +404,8 @@ describe("guest portal pages", () => {
     const { default: Page } = await load("./my/bookings/[id]/page");
     guestMock.mockResolvedValue({ scope: "guest", phone: "+919812300000" });
     const html = await renderRSC(Page({ params: Promise.resolve({ id: arrivingId }) }));
-    expect(html).toContain("still to pay");
+    // Cash-first: an unpaid booking shows the manual-confirmation status, not an online link.
+    expect(html).toContain("Awaiting payment confirmation");
 
     guestMock.mockResolvedValue(null);
     await expect(renderRSC(Page({ params: Promise.resolve({ id: arrivingId }) }))).rejects.toThrow(

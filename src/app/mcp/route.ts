@@ -11,6 +11,8 @@ import { NextResponse } from "next/server";
 import { APP } from "@/lib/config";
 import { prisma } from "@/lib/db";
 import { TOOLS, getTool, ScopeError, type McpContext } from "@/lib/mcp/tools";
+import { listResources, readResource, RESOURCE_TEMPLATES } from "@/lib/mcp/resources";
+import { PROMPTS, getPrompt } from "@/lib/mcp/prompts";
 import { resolveMcpContext } from "@/lib/mcp/auth";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +61,11 @@ export async function POST(req: Request) {
   if (body.method === "initialize") {
     return rpcResult(body.id, {
       protocolVersion: PROTOCOL_VERSION,
-      capabilities: { tools: { listChanged: false } },
+      capabilities: {
+        tools: { listChanged: false },
+        resources: { listChanged: false },
+        prompts: { listChanged: false },
+      },
       serverInfo: { name: "StayKit", version: "0.1.0" },
     });
   }
@@ -103,6 +109,37 @@ export async function POST(req: Request) {
       const message = (e as Error).message;
       // Tool errors are returned as result content with isError per MCP convention.
       return rpcResult(body.id, { content: [{ type: "text", text: message }], isError: true });
+    }
+  }
+
+  if (body.method === "resources/list") {
+    return rpcResult(body.id, {
+      resources: await listResources(ctx),
+      resourceTemplates: RESOURCE_TEMPLATES,
+    });
+  }
+
+  if (body.method === "resources/read") {
+    const uri = String(body.params?.uri ?? "");
+    try {
+      const contents = await readResource(uri, ctx);
+      return rpcResult(body.id, { contents: [contents] });
+    } catch (e) {
+      return rpcError(body.id, -32602, (e as Error).message);
+    }
+  }
+
+  if (body.method === "prompts/list") {
+    return rpcResult(body.id, { prompts: PROMPTS });
+  }
+
+  if (body.method === "prompts/get") {
+    const name = String(body.params?.name ?? "");
+    const args = (body.params?.arguments as Record<string, unknown>) ?? {};
+    try {
+      return rpcResult(body.id, getPrompt(name, args));
+    } catch (e) {
+      return rpcError(body.id, -32602, (e as Error).message);
     }
   }
 

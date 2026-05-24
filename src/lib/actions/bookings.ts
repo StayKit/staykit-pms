@@ -9,12 +9,15 @@ import {
   checkInBooking,
   checkOutBooking,
   cancelBooking,
+  moveBooking,
   DoubleBookingError,
   BookingValidationError,
 } from "../booking/engine";
 import { createPaymentLinkForBooking, applyPayment } from "../payments/service";
+import { onlinePaymentsEnabled } from "../payments/razorpay/client";
+import { writeAudit } from "../audit";
 import { prisma } from "../db";
-import { toPaise } from "../money";
+import { toPaise, inr } from "../money";
 
 export interface ActionResult {
   ok: boolean;
@@ -71,7 +74,9 @@ export async function createBookingAction(
 
     if (data.payment === "paid") {
       await applyPayment(booking.id, booking.totalAmount, { method: "cash" });
-    } else if (data.payment === "link") {
+    } else if (data.payment === "link" && (await onlinePaymentsEnabled())) {
+      // Online links are best-effort and only when Razorpay is enabled; otherwise the
+      // booking simply stays "collect manually" (cash-first default).
       await createPaymentLinkForBooking(booking.id, { actorName: ctx.name }).catch(() => {});
     }
 
@@ -126,11 +131,46 @@ export async function cancelAction(bookingId: string, reason: string): Promise<A
   return { ok: true };
 }
 
+export async function moveBookingAction(
+  bookingId: string,
+  input: { roomId?: string; checkIn?: string; checkOut?: string },
+): Promise<ActionResult> {
+  const ctx = await requireContext();
+  const b = await prisma.booking.findUnique({ where: { id: bookingId } });
+  if (!b) return { ok: false, message: "Booking not found" };
+  assertAccess(ctx, "bookings:write", { propertyId: b.propertyId });
+  try {
+    await moveBooking({
+      bookingId,
+      ownerId: ctx.ownerId,
+      roomId: input.roomId,
+      checkIn: input.checkIn,
+      checkOut: input.checkOut,
+      actorName: ctx.name,
+    });
+    revalidatePath(`/bookings/${bookingId}`);
+    revalidatePath("/calendar");
+    return { ok: true, message: "Booking moved." };
+  } catch (e) {
+    if (e instanceof DoubleBookingError) {
+      return { ok: false, message: "That room is already booked for one or more of those nights." };
+    }
+    if (e instanceof BookingValidationError) return { ok: false, message: e.message };
+    return { ok: false, message: "Could not move the booking." };
+  }
+}
+
 export async function sendPaymentLinkAction(bookingId: string): Promise<ActionResult> {
   const ctx = await requireContext();
   const b = await prisma.booking.findUnique({ where: { id: bookingId } });
   if (!b) return { ok: false, message: "Booking not found" };
   assertAccess(ctx, "payments:read", { propertyId: b.propertyId });
+  if (!(await onlinePaymentsEnabled())) {
+    return {
+      ok: false,
+      message: "Online payments are off. Add valid Razorpay keys, or record the payment manually.",
+    };
+  }
   try {
     const { shortUrl, mock } = await createPaymentLinkForBooking(bookingId, {
       actorName: ctx.name,
@@ -154,4 +194,42 @@ export async function markPaidAction(bookingId: string): Promise<ActionResult> {
   if (due > 0) await applyPayment(bookingId, due, { method: "cash" });
   revalidatePath(`/bookings/${bookingId}`);
   return { ok: true };
+}
+
+const PAYMENT_METHODS = ["cash", "upi", "bank", "card", "other"] as const;
+
+/**
+ * Manually record a (cash/UPI/bank) payment a manager has verified. This is the
+ * cash-first confirmation path that flips a guest's "awaiting confirmation" status.
+ */
+export async function recordPaymentAction(
+  bookingId: string,
+  input: { amountRupees: number; method: string; reference?: string },
+): Promise<ActionResult> {
+  const ctx = await requireContext();
+  const b = await prisma.booking.findUnique({ where: { id: bookingId } });
+  if (!b) return { ok: false, message: "Booking not found" };
+  assertAccess(ctx, "payments:read", { propertyId: b.propertyId });
+
+  const amount = toPaise(Number(input.amountRupees));
+  if (!Number.isFinite(amount) || amount <= 0)
+    return { ok: false, message: "Enter a valid amount." };
+  const due = b.totalAmount - b.amountPaid;
+  if (amount > due) return { ok: false, message: `That's more than the ${inr(due)} still due.` };
+
+  const method = (PAYMENT_METHODS as readonly string[]).includes(input.method)
+    ? input.method
+    : "other";
+  await applyPayment(bookingId, amount, { method });
+  await writeAudit({
+    ownerId: ctx.ownerId,
+    actorType: "USER",
+    actorName: ctx.name,
+    action: "PAYMENT_RECORDED",
+    entityType: "Booking",
+    entityId: bookingId,
+    summary: `recorded ${inr(amount)} (${method}${input.reference ? ` · ${input.reference}` : ""})`,
+  });
+  revalidatePath(`/bookings/${bookingId}`);
+  return { ok: true, message: `Recorded ${inr(amount)} (${method}).` };
 }

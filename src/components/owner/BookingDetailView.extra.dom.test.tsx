@@ -8,6 +8,8 @@ vi.mock("@/lib/actions/bookings", () => ({
   sendPaymentLinkAction: vi.fn(),
   markPaidAction: vi.fn(),
   cancelAction: vi.fn(),
+  moveBookingAction: vi.fn(),
+  recordPaymentAction: vi.fn(),
 }));
 
 import { BookingDetailView, type BookingDetailData } from "./BookingDetailView";
@@ -41,6 +43,7 @@ const data: BookingDetailData = {
     tax: "₹ 0",
     total: "₹ 39,750",
     paid: "₹ 0",
+    paidRaw: 0,
     due: "₹ 39,750",
     dueRaw: 3975000,
     taxLabel: "No GST (owner unregistered)",
@@ -50,6 +53,8 @@ const data: BookingDetailData = {
   comms: [],
   audit: [],
   notes: null,
+  move: null,
+  onlineEnabled: false,
 };
 
 describe("BookingDetailView foreign-national badge", () => {
