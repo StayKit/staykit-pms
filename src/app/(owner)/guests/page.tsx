@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
+import { inr } from "@/lib/money";
 import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/ui";
 import { Pagination } from "@/components/owner/Pagination";
@@ -10,30 +11,69 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
 
+function parseTags(s: string): string[] {
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? v.map(String).slice(0, 4) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function GuestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string }>;
 }) {
   const ctx = (await getAppContext())!;
-  const { q, page: pageParam } = await searchParams;
+  const { q, page: pageParam, sort } = await searchParams;
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
+  const byValue = sort === "ltv";
 
   // Search filters at the DB; take/skip keeps a low-spec browser to one page of rows.
   const where: Prisma.GuestWhereInput = {
     ownerId: ctx.ownerId,
     ...(q ? { OR: [{ name: { contains: q } }, { phone: { contains: q } }] } : {}),
   };
-  const [guests, total] = await Promise.all([
-    prisma.guest.findMany({
+  const total = await prisma.guest.count({ where });
+
+  // Lifetime value = sum of paid across non-cancelled bookings.
+  const ltv = new Map<string, number>();
+  type GuestRow = Prisma.GuestGetPayload<{ include: { _count: { select: { bookings: true } } } }>;
+  let guests: GuestRow[];
+
+  if (byValue) {
+    // "Top spenders" needs a global ranking, so compute LTV across all matching guests,
+    // then paginate in memory (fine for a homestay's address book).
+    const all = await prisma.guest.findMany({
       where,
-      orderBy: { name: "asc" },
+      include: { _count: { select: { bookings: true } } },
+    });
+    const ltvRows = await prisma.bookingGuest.findMany({
+      where: { guestId: { in: all.map((g) => g.id) }, booking: { status: { not: "CANCELLED" } } },
+      select: { guestId: true, booking: { select: { amountPaid: true } } },
+    });
+    for (const r of ltvRows) ltv.set(r.guestId, (ltv.get(r.guestId) ?? 0) + r.booking.amountPaid);
+    all.sort((a, b) => (ltv.get(b.id) ?? 0) - (ltv.get(a.id) ?? 0));
+    guests = all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  } else {
+    // Default: VIPs first, then alphabetical, paginated at the DB.
+    guests = await prisma.guest.findMany({
+      where,
+      orderBy: [{ vip: "desc" }, { name: "asc" }],
       include: { _count: { select: { bookings: true } } },
       take: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
-    }),
-    prisma.guest.count({ where }),
-  ]);
+    });
+    const ltvRows = await prisma.bookingGuest.findMany({
+      where: {
+        guestId: { in: guests.map((g) => g.id) },
+        booking: { status: { not: "CANCELLED" } },
+      },
+      select: { guestId: true, booking: { select: { amountPaid: true } } },
+    });
+    for (const r of ltvRows) ltv.set(r.guestId, (ltv.get(r.guestId) ?? 0) + r.booking.amountPaid);
+  }
 
   return (
     <div className="page" style={{ paddingTop: 16 }}>
@@ -43,6 +83,13 @@ export default async function GuestsPage({
           <div className="sub">{total.toLocaleString("en-IN")} guests in your address book</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <Link
+            className={"btn" + (byValue ? " btn-primary" : "")}
+            href={byValue ? "/guests" : "/guests?sort=ltv"}
+          >
+            <Icon name="trending-up" className="icon-sm" />{" "}
+            {byValue ? "All guests" : "Top spenders"}
+          </Link>
           <a className="btn" href="/api/reports/guests.csv">
             <Icon name="external" className="icon-sm" /> Export CSV
           </a>
@@ -62,6 +109,7 @@ export default async function GuestsPage({
                 <th>Phone</th>
                 <th>City</th>
                 <th>Stays</th>
+                <th>Lifetime value</th>
                 <th>Marketing consent</th>
                 <th style={{ width: 40 }}></th>
               </tr>
@@ -75,7 +123,12 @@ export default async function GuestsPage({
                       <div>
                         <div
                           className="name"
-                          style={{ display: "flex", alignItems: "center", gap: 6 }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            flexWrap: "wrap",
+                          }}
                         >
                           {g.name}
                           {g.isForeign && (
@@ -85,6 +138,17 @@ export default async function GuestsPage({
                               style={{ color: "var(--muted)" }}
                             />
                           )}
+                          {g.vip && (
+                            <span className="pill pill-brand">
+                              <Icon name="sparkles" className="icon-sm" /> VIP
+                            </span>
+                          )}
+                          {g.blacklisted && <span className="pill pill-unpaid">Do not book</span>}
+                          {parseTags(g.tags).map((t) => (
+                            <span key={t} className="pill pill-neutral">
+                              {t}
+                            </span>
+                          ))}
                         </div>
                         <div className="sub">{g.email ?? "—"}</div>
                       </div>
@@ -97,6 +161,7 @@ export default async function GuestsPage({
                   <td>
                     <span className="pill pill-neutral">{g._count.bookings} stays</span>
                   </td>
+                  <td className="tabular text-sm">{inr(ltv.get(g.id) ?? 0)}</td>
                   <td>
                     {g.marketingConsent ? (
                       <span className="pill pill-brand">
@@ -115,7 +180,7 @@ export default async function GuestsPage({
               ))}
               {guests.length === 0 && (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     <div className="empty-state">
                       <Icon name="users" className="icon" />
                       <div className="empty-title">
@@ -146,7 +211,7 @@ export default async function GuestsPage({
           pageSize={PAGE_SIZE}
           total={total}
           basePath="/guests"
-          params={{ q }}
+          params={{ q, sort: byValue ? "ltv" : undefined }}
         />
       </div>
     </div>

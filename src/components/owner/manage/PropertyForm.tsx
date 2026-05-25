@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { Toast } from "@/components/Toast";
 import { INDIAN_STATES } from "@/lib/india";
 import { createPropertyAction, updatePropertyAction } from "@/lib/actions/properties";
 
@@ -180,11 +181,7 @@ export function PropertyForm({
       <button className="btn btn-primary" disabled={pending || !form.name.trim()} onClick={save}>
         <Icon name="check" className="icon-sm" /> {id ? "Save changes" : "Create property"}
       </button>
-      {msg && (
-        <div className="dev-code" style={{ marginTop: 12 }}>
-          {msg}
-        </div>
-      )}
+      {msg && <Toast message={msg} onClose={() => setMsg(null)} />}
     </div>
   );
 }

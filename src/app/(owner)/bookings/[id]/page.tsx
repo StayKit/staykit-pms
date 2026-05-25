@@ -42,7 +42,11 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     orderBy: { createdAt: "asc" },
   });
 
-  const canMove = b.status !== "CANCELLED" && b.status !== "CHECKED_OUT";
+  // Single-room move only (multi-room group moves aren't supported yet).
+  const canMove =
+    b.status !== "CANCELLED" &&
+    b.status !== "CHECKED_OUT" &&
+    new Set(b.rooms.map((r) => r.roomId)).size <= 1;
   const [propertyRooms, templates] = await Promise.all([
     canMove
       ? prisma.room.findMany({
@@ -60,6 +64,14 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
 
   const guest = b.guests[0]?.guest;
   const room = b.rooms[0]?.room;
+  // A booking can span several rooms (audit P1 #9). Collapse the per-night rows to a
+  // distinct, ordered list and a display label.
+  const distinctRooms = [...new Map(b.rooms.map((r) => [r.roomId, r.room])).values()];
+  const roomNumber = distinctRooms.length === 1 ? (room?.number ?? "") : "";
+  const roomName =
+    distinctRooms.length <= 1
+      ? (room?.name ?? "")
+      : `${distinctRooms.length} rooms · ${distinctRooms.map((r) => r.number || r.name).join(", ")}`;
   const nights = nightsBetween(b.checkIn, b.checkOut);
   const due = b.totalAmount - b.amountPaid;
   const nightly = nights ? Math.round(b.subtotal / nights) : b.subtotal;
@@ -71,7 +83,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     id: b.id,
     ref: b.ref,
     state: deriveState(b),
-    room: { number: room?.number ?? "", name: room?.name ?? "" },
+    room: { number: roomNumber, name: roomName },
     guest: guest
       ? {
           id: guest.id,
@@ -103,6 +115,8 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
       dueRaw: due,
       taxLabel: taxRate ? `${taxRate}% GST` : "No GST (owner unregistered)",
       nightly: inr(nightly),
+      depositHeld: inr(b.depositHeld),
+      depositRaw: b.depositHeld,
     },
     payments,
     comms: b.notifications.map((n) => {
@@ -127,12 +141,16 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     cancelRequest: b.cancelRequestedAt
       ? { when: fmtTime(b.cancelRequestedAt), reason: b.cancelRequestReason }
       : null,
+    failedRefunds: b.refunds
+      .filter((r) => r.status === "FAILED")
+      .map((r) => ({ id: r.id, amount: inr(r.amount), reason: r.reason })),
     onlineEnabled: await onlinePaymentsEnabled(),
     templates,
     guestHasEmail: !!guest?.email,
     move:
       canMove && room
         ? {
+            propertyId: b.propertyId,
             roomId: room.id,
             checkInYmd: ymd(b.checkIn),
             checkOutYmd: ymd(b.checkOut),

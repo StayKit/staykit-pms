@@ -14,11 +14,11 @@ datasource db {
 
 // ───── Tenancy / Identity ─────
 model Owner {
-  id           String           @id @default(cuid())
+  id           String                   @id @default(cuid())
   name         String
-  email        String?          @unique
-  phone        String           @unique
-  createdAt    DateTime         @default(now())
+  email        String?                  @unique
+  phone        String                   @unique
+  createdAt    DateTime                 @default(now())
   properties   Property[]
   users        User[]
   guests       Guest[]
@@ -61,47 +61,48 @@ model PropertyScope {
 }
 
 model Property {
-  id                 String             @id @default(cuid())
-  ownerId            String
-  owner              Owner              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  name               String
-  addressLine1       String
-  addressLine2       String?
-  city               String
-  state              String // KA, KL, HP, UK, GA, MH, etc.
-  pincode            String
-  gstin              String?
-  sacCode            String             @default("996311") // Room or unit accommodation services
-  checkInTime        String             @default("14:00")
-  checkOutTime       String             @default("11:00")
-  cancellationPolicy String?
-  paymentInstructions String?           // shown to guests for manual/cash payment (UPI, bank, "pay on arrival")
-  invoicePrefix      String             @default("INV")
-  invoiceCounter     Int                @default(0)
-  defaultCurrency    String             @default("INR")
-  active             Boolean            @default(true)
-  createdAt          DateTime           @default(now())
-  rooms              Room[]
-  roomTypes          RoomType[]
-  ratePlans          RatePlan[]
-  bookings           Booking[]
-  scopes             PropertyScope[]
-  maintenance        MaintenanceBlock[]
+  id                  String             @id @default(cuid())
+  ownerId             String
+  owner               Owner              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name                String
+  addressLine1        String
+  addressLine2        String?
+  city                String
+  state               String // KA, KL, HP, UK, GA, MH, etc.
+  pincode             String
+  gstin               String?
+  sacCode             String             @default("996311") // Room or unit accommodation services
+  checkInTime         String             @default("14:00")
+  checkOutTime        String             @default("11:00")
+  cancellationPolicy  String?
+  paymentInstructions String? // shown to guests for manual/cash payment (UPI, bank, "pay on arrival")
+  invoicePrefix       String             @default("INV")
+  invoiceCounter      Int                @default(0)
+  invoiceFyLabel      String? // financial year of the current counter, e.g. "25-26"; counter resets each FY
+  defaultCurrency     String             @default("INR")
+  active              Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  rooms               Room[]
+  roomTypes           RoomType[]
+  ratePlans           RatePlan[]
+  bookings            Booking[]
+  scopes              PropertyScope[]
+  maintenance         MaintenanceBlock[]
 
   @@index([ownerId])
 }
 
 // ───── Inventory ─────
 model RoomType {
-  id           String   @id @default(cuid())
+  id           String             @id @default(cuid())
   propertyId   String
-  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property     Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   name         String
-  color        String   @default("#3D5A80")
-  maxOccupancy Int      @default(2)
+  color        String             @default("#3D5A80")
+  maxOccupancy Int                @default(2)
   baseRate     Int // paise
   description  String?
-  sortOrder    Int      @default(0)
+  sortOrder    Int                @default(0)
   rooms        Room[]
   overrides    RatePlanOverride[]
 
@@ -109,19 +110,23 @@ model RoomType {
 }
 
 model Room {
-  id          String             @id @default(cuid())
-  propertyId  String
-  property    Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  roomTypeId  String
-  roomType    RoomType           @relation(fields: [roomTypeId], references: [id])
-  name        String // "Cottage 1" or "Room 101"
-  number      String             @default("")
-  active      Boolean            @default(true)
-  cleanliness Cleanliness        @default(CLEAN)
-  amenities   String             @default("[]") // JSON array
-  photos      String             @default("[]") // JSON array of FileUpload ids
-  bookings    BookingRoom[]
-  blocks      MaintenanceBlock[]
+  id            String             @id @default(cuid())
+  propertyId    String
+  property      Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomTypeId    String
+  roomType      RoomType           @relation(fields: [roomTypeId], references: [id])
+  name          String // "Cottage 1" or "Room 101"
+  number        String             @default("")
+  active        Boolean            @default(true)
+  cleanliness   Cleanliness        @default(CLEAN)
+  amenities     String             @default("[]") // JSON array
+  photos        String             @default("[]") // JSON array of FileUpload ids
+  // Housekeeping accountability (audit P2 #22): who is on it and who last cleaned it, when.
+  housekeeperId String? // staff (User.id) currently assigned to turn this room
+  cleanedAt     DateTime? // last time it was marked CLEAN
+  cleanedById   String? // staff (User.id) who marked it CLEAN
+  bookings      BookingRoom[]
+  blocks        MaintenanceBlock[]
 
   @@unique([propertyId, name])
 }
@@ -192,41 +197,44 @@ model ChannelSource {
 
 // ───── Bookings ─────
 model Booking {
-  id                 String            @id @default(cuid())
-  ref                String            @unique // human-friendly e.g. "SK-A8X3Q"
-  propertyId         String
-  property           Property          @relation(fields: [propertyId], references: [id])
-  channelId          String
-  channel            ChannelSource     @relation(fields: [channelId], references: [id])
-  status             BookingStatus     @default(CONFIRMED)
-  checkIn            DateTime
-  checkOut           DateTime
-  adults             Int               @default(1)
-  children           Int               @default(0)
-  subtotal           Int // paise
-  taxAmount          Int // paise
-  totalAmount        Int // paise
-  amountPaid         Int               @default(0)
-  notes              String? // staff-internal
-  arrivalTime        String? // guest-provided ETA, free text e.g. "around 6 PM"
-  guestRequests      String? // special requests entered by the guest in the portal
-  cancelRequestedAt  DateTime? // guest asked to cancel; staff still action it
+  id                  String            @id @default(cuid())
+  ref                 String            @unique // human-friendly e.g. "SK-A8X3Q"
+  propertyId          String
+  property            Property          @relation(fields: [propertyId], references: [id])
+  channelId           String
+  channel             ChannelSource     @relation(fields: [channelId], references: [id])
+  status              BookingStatus     @default(CONFIRMED)
+  checkIn             DateTime
+  checkOut            DateTime
+  adults              Int               @default(1)
+  children            Int               @default(0)
+  subtotal            Int // paise
+  taxAmount           Int // paise
+  totalAmount         Int // paise
+  amountPaid          Int               @default(0)
+  depositHeld         Int               @default(0) // refundable security deposit, tracked apart from amountPaid (audit P2 #18)
+  invoiceNumber       String?           @unique // gapless serial assigned when the tax invoice is issued (audit P0 #3)
+  invoiceIssuedAt     DateTime?
+  notes               String? // staff-internal
+  arrivalTime         String? // guest-provided ETA, free text e.g. "around 6 PM"
+  guestRequests       String? // special requests entered by the guest in the portal
+  cancelRequestedAt   DateTime? // guest asked to cancel; staff still action it
   cancelRequestReason String?
-  cancellationReason String?
-  cancelledAt        DateTime?
-  checkedInAt        DateTime?
-  checkedOutAt       DateTime?
-  formCFiledAt       DateTime?
-  createdById        String?
-  createdViaMcp      Boolean           @default(false)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  rooms              BookingRoom[]
-  guests             BookingGuest[]
-  payments           Payment[]
-  paymentLinks       PaymentLink[]
-  refunds            Refund[]
-  notifications      NotificationLog[]
+  cancellationReason  String?
+  cancelledAt         DateTime?
+  checkedInAt         DateTime?
+  checkedOutAt        DateTime?
+  formCFiledAt        DateTime?
+  createdById         String?
+  createdViaMcp       Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  rooms               BookingRoom[]
+  guests              BookingGuest[]
+  payments            Payment[]
+  paymentLinks        PaymentLink[]
+  refunds             Refund[]
+  notifications       NotificationLog[]
 
   @@index([propertyId, checkIn, checkOut])
   @@index([status])
@@ -275,8 +283,12 @@ model Guest {
   phone            String
   email            String?
   city             String?
+  state            String? // GST state code (KA, KL, …); drives place-of-supply / IGST (audit P0 #4)
   isForeign        Boolean        @default(false)
   nationality      String?
+  vip              Boolean        @default(false) // CRM flag (audit P2 #25)
+  blacklisted      Boolean        @default(false) // "do not book"
+  tags             String         @default("[]") // JSON array of free-text tags
   idType           String? // AADHAAR, PASSPORT, DRIVING_LICENSE, VOTER_ID
   idLast4          String?
   idFileId         String? // → FileUpload; encrypted at rest
@@ -325,6 +337,7 @@ model Payment {
   razorpayPaymentId String?       @unique // pay_xxx
   razorpayOrderId   String?
   amount            Int // paise
+  isDeposit         Boolean       @default(false) // refundable security deposit, not room revenue (audit P2 #18)
   status            PaymentStatus @default(CREATED)
   method            String? // upi, card, netbanking, wallet
   capturedAt        DateTime?
@@ -414,22 +427,22 @@ model NotificationAutomation {
 }
 
 model NotificationLog {
-  id                String             @id @default(cuid())
+  id                String              @id @default(cuid())
   bookingId         String?
-  booking           Booking?           @relation(fields: [bookingId], references: [id])
+  booking           Booking?            @relation(fields: [bookingId], references: [id])
   channel           NotificationChannel
   to                String
   templateId        String?
   triggerKey        String
-  status            NotificationStatus @default(QUEUED)
-  attempts          Int                @default(0)
+  status            NotificationStatus  @default(QUEUED)
+  attempts          Int                 @default(0)
   lastError         String?
   providerMessageId String?
   payload           String?
   scheduledFor      DateTime
   sentAt            DateTime?
   deliveredAt       DateTime?
-  createdAt         DateTime           @default(now())
+  createdAt         DateTime            @default(now())
 
   @@index([status, scheduledFor])
   @@index([bookingId])
@@ -597,13 +610,13 @@ enum JobStatus {
 }
 
 model DailyOccupancy {
-  id          String   @id @default(cuid())
-  propertyId  String
-  date        DateTime
-  roomsTotal  Int
-  roomsSold   Int
-  revenue     Int // paise
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  propertyId String
+  date       DateTime
+  roomsTotal Int
+  roomsSold  Int
+  revenue    Int // paise
+  createdAt  DateTime @default(now())
 
   @@unique([propertyId, date])
 }

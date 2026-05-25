@@ -95,6 +95,15 @@ export async function updateRoomTypeAction(
         sortOrder: data.sortOrder,
       },
     });
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "ROOM_TYPE_UPDATED",
+      entityType: "RoomType",
+      entityId: id,
+      summary: `edited room type ${data.name}`,
+    });
     revalidateInventory(rt.propertyId);
     return ok();
   } catch (e) {
@@ -114,6 +123,15 @@ export async function deleteRoomTypeAction(id: string): Promise<ActionResult> {
     await assertOwnedProperty(ctx, rt.propertyId, "properties:write");
     if (rt._count.rooms > 0) return fail("Remove the rooms of this type first.");
     await prisma.roomType.delete({ where: { id } });
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "ROOM_TYPE_DELETED",
+      entityType: "RoomType",
+      entityId: id,
+      summary: `deleted room type ${rt.name}`,
+    });
     revalidateInventory(rt.propertyId);
     return ok();
   } catch (e) {
@@ -186,6 +204,15 @@ export async function updateRoomAction(
         active: data.active,
       },
     });
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "ROOM_UPDATED",
+      entityType: "Room",
+      entityId: id,
+      summary: `edited room ${data.name}`,
+    });
     revalidateInventory(room.propertyId);
     return ok();
   } catch (e) {
@@ -206,8 +233,66 @@ export async function setCleanlinessAction(
     });
     if (!room) return fail("Room not found.");
     // Front-desk can change cleanliness with bookings:write (operate the day).
-    await prisma.room.update({ where: { id: roomId }, data: { cleanliness: value } });
+    // Record who cleaned it and when (audit P2 #22) so the housekeeping board has accountability.
+    await prisma.room.update({
+      where: { id: roomId },
+      data: {
+        cleanliness: value,
+        ...(value === "CLEAN" ? { cleanedAt: new Date(), cleanedById: ctx.userId } : {}),
+      },
+    });
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "ROOM_CLEANLINESS_SET",
+      entityType: "Room",
+      entityId: roomId,
+      summary: `set ${room.name} to ${value.toLowerCase().replace("_", " ")}`,
+    });
     revalidateInventory(room.propertyId);
+    return ok();
+  } catch (e) {
+    return failFrom(e);
+  }
+}
+
+/** Assign (or clear) the housekeeper responsible for turning a room (audit P2 #22). */
+export async function assignHousekeeperAction(
+  roomId: string,
+  userId: string | null,
+): Promise<ActionResult> {
+  try {
+    const ctx = await requireContext();
+    const room = await prisma.room.findFirst({
+      where: { id: roomId, property: { ownerId: ctx.ownerId } },
+    });
+    if (!room) return fail("Room not found.");
+    let assignee: { id: string; name: string } | null = null;
+    if (userId) {
+      assignee = await prisma.user.findFirst({
+        where: { id: userId, ownerId: ctx.ownerId },
+        select: { id: true, name: true },
+      });
+      if (!assignee) return fail("That team member doesn't belong to you.");
+    }
+    await prisma.room.update({
+      where: { id: roomId },
+      data: { housekeeperId: assignee?.id ?? null },
+    });
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "HOUSEKEEPER_ASSIGNED",
+      entityType: "Room",
+      entityId: roomId,
+      summary: assignee
+        ? `assigned ${assignee.name} to clean ${room.name}`
+        : `cleared housekeeper on ${room.name}`,
+    });
+    revalidateInventory(room.propertyId);
+    revalidatePath("/housekeeping");
     return ok();
   } catch (e) {
     return failFrom(e);
@@ -227,6 +312,15 @@ export async function deleteRoomAction(id: string): Promise<ActionResult> {
       return fail("This room has bookings — set it inactive instead of deleting.");
     }
     await prisma.room.delete({ where: { id } });
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "ROOM_DELETED",
+      entityType: "Room",
+      entityId: id,
+      summary: `deleted room ${room.name}`,
+    });
     revalidateInventory(room.propertyId);
     return ok();
   } catch (e) {

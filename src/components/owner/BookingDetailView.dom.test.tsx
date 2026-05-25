@@ -60,6 +60,8 @@ function makeData(state: DisplayState, over: Partial<BookingDetailData> = {}): B
       dueRaw: 945000,
       taxLabel: "5% GST",
       nightly: "₹ 6,000",
+      depositHeld: "₹ 0",
+      depositRaw: 0,
     },
     payments: [
       { icon: "send", tone: "", title: "Link created", sub: "yesterday" },
@@ -78,6 +80,7 @@ function makeData(state: DisplayState, over: Partial<BookingDetailData> = {}): B
     arrivalTime: null,
     guestRequests: null,
     cancelRequest: null,
+    failedRefunds: [],
     move: null,
     onlineEnabled: false,
     templates: [],

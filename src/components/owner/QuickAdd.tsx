@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { createBookingAction, quoteBookingAction, type BookingQuote } from "@/lib/actions/bookings";
+import { INDIAN_STATES } from "@/lib/india";
 
 export interface QuickAddRoom {
   id: string;
@@ -49,7 +50,8 @@ export function QuickAdd({
     guestName: "",
     guestPhone: "",
     guestEmail: "",
-    roomId: rooms[0]?.id ?? "",
+    guestState: "",
+    roomIds: rooms[0]?.id ? [rooms[0].id] : ([] as string[]),
     checkIn: isoPlus(0),
     checkOut: isoPlus(2),
     adults: 2,
@@ -67,24 +69,27 @@ export function QuickAdd({
       setRateManual(false);
       setForm((f) => ({
         ...f,
-        roomId: prefillRoom ?? f.roomId,
+        roomIds: prefillRoom ? [prefillRoom] : f.roomIds,
         checkIn: prefillDate ?? f.checkIn,
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Auto-price the stay from rate plans and check availability whenever the room or
-  // dates change (audit P0 #1 + #2). Skipped once staff type their own rate.
+  // Auto-price the stay (rate plans, or the staff's manual rate) and check availability
+  // whenever the room/dates/rate change (audit P0 #2). The server computes GST with the
+  // real engine — 0% / 5% / 18% by per-night value — so the screen always matches the invoice.
+  const roomKey = form.roomIds.join(",");
   useEffect(() => {
-    if (!open || !form.roomId) return;
+    if (!open || form.roomIds.length === 0) return;
     let active = true;
     const handle = setTimeout(async () => {
       const q = await quoteBookingAction({
         propertyId,
-        roomId: form.roomId,
+        roomIds: form.roomIds,
         checkIn: form.checkIn,
         checkOut: form.checkOut,
+        ...(rateManual ? { nightlyRateRupees: form.nightlyRateRupees } : {}),
       });
       if (!active || !q.ok) return;
       setQuote(q);
@@ -97,10 +102,12 @@ export function QuickAdd({
       clearTimeout(handle);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, form.roomId, form.checkIn, form.checkOut, rateManual, propertyId]);
+  }, [open, roomKey, form.checkIn, form.checkOut, form.nightlyRateRupees, rateManual, propertyId]);
 
   const unavailable = new Set(quote?.unavailableRoomIds ?? []);
-  const selectedUnavailable = unavailable.has(form.roomId);
+  const selectedUnavailable = form.roomIds.some((id) => unavailable.has(id));
+  const overCapacity =
+    !!quote?.ok && quote.maxOccupancy > 0 && form.adults + form.children > quote.maxOccupancy;
 
   function close() {
     const params = new URLSearchParams(sp.toString());
@@ -118,14 +125,14 @@ export function QuickAdd({
     1,
     Math.round((new Date(form.checkOut).getTime() - new Date(form.checkIn).getTime()) / 86_400_000),
   );
-  // Auto rates can vary per night (weekday/weekend); trust the server quote's subtotal.
-  // A manual rate is a flat per-night figure.
-  const subtotal =
-    !rateManual && quote?.ok && quote.subtotalRupees > 0
-      ? quote.subtotalRupees
-      : form.nightlyRateRupees * nights;
-  const gst = Math.round(subtotal * 0.05);
-  const total = subtotal + gst;
+  // Trust the server quote for the money figures — it prices both the rate-plan and the
+  // manual-rate path and applies the real GST engine (0/5/18%), so the screen matches
+  // exactly what the booking will store and invoice. Fall back to a flat estimate only
+  // before the first quote arrives.
+  const subtotal = quote?.ok ? quote.subtotalRupees : form.nightlyRateRupees * nights;
+  const gst = quote?.ok ? quote.taxRupees : 0;
+  const total = quote?.ok ? quote.totalRupees : subtotal;
+  const taxLabel = quote?.ok ? quote.taxLabel : "GST";
 
   async function submit() {
     setPending(true);
@@ -191,6 +198,21 @@ export function QuickAdd({
               </div>
             </div>
 
+            <div className="field">
+              <label>
+                Guest&apos;s home state{" "}
+                <span className="hint">(for correct GST on the invoice)</span>
+              </label>
+              <select value={form.guestState} onChange={(e) => set("guestState", e.target.value)}>
+                <option value="">Not specified</option>
+                {INDIAN_STATES.map((s) => (
+                  <option key={s.code} value={s.code}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="field-row">
               <div className="field">
                 <label>Check-in</label>
@@ -229,6 +251,12 @@ export function QuickAdd({
                   onChange={(e) => set("children", +e.target.value)}
                 />
               </div>
+              {overCapacity && (
+                <div className="error-text" style={{ gridColumn: "1 / -1", marginTop: -4 }}>
+                  <Icon name="info" className="icon-sm" /> That&apos;s more than this room holds
+                  (max {quote?.maxOccupancy}). Pick a larger room or split the booking.
+                </div>
+              )}
               <div className="field">
                 <label>Rate / night (₹)</label>
                 <input
@@ -269,29 +297,43 @@ export function QuickAdd({
             </div>
 
             <div className="field">
-              <label>Room</label>
-              <select
-                value={form.roomId}
-                onChange={(e) => {
-                  const r = rooms.find((x) => x.id === e.target.value);
-                  set("roomId", e.target.value);
-                  setRateManual(false);
-                  // Show the new room's base rate instantly; the quote effect then
-                  // refines it with any matching rate plan.
-                  if (r) set("nightlyRateRupees", r.baseRateRupees);
-                }}
-              >
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id} disabled={unavailable.has(r.id)}>
-                    {r.label}
-                    {unavailable.has(r.id) ? " — booked / blocked" : ""}
-                  </option>
-                ))}
-              </select>
+              <label>
+                Room(s){" "}
+                <span className="hint">
+                  {form.roomIds.length > 1 ? `${form.roomIds.length} selected` : "tap to add more"}
+                </span>
+              </label>
+              <div className="chips">
+                {rooms.map((r) => {
+                  const selected = form.roomIds.includes(r.id);
+                  const blocked = unavailable.has(r.id);
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      className={"chip" + (selected ? " selected" : "")}
+                      disabled={blocked && !selected}
+                      onClick={() => {
+                        setRateManual(false);
+                        setForm((f) => ({
+                          ...f,
+                          roomIds: selected
+                            ? f.roomIds.filter((id) => id !== r.id)
+                            : [...f.roomIds, r.id],
+                        }));
+                      }}
+                    >
+                      {selected && <Icon name="check" className="icon-sm" />}
+                      {r.label}
+                      {blocked ? " — booked" : ""}
+                    </button>
+                  );
+                })}
+              </div>
               {selectedUnavailable && (
                 <div className="error-text" style={{ marginTop: 4 }}>
-                  <Icon name="info" className="icon-sm" /> This room isn&apos;t free for those
-                  dates. Pick another room or change the dates.
+                  <Icon name="info" className="icon-sm" /> A selected room isn&apos;t free for those
+                  dates. Deselect it or change the dates.
                 </div>
               )}
             </div>
@@ -390,7 +432,7 @@ export function QuickAdd({
                 <div className="money">₹ {subtotal.toLocaleString("en-IN")}</div>
               </div>
               <div className="li-row">
-                <div>GST (5%)</div>
+                <div>{taxLabel}</div>
                 <div />
                 <div className="money">₹ {gst.toLocaleString("en-IN")}</div>
               </div>
@@ -445,8 +487,18 @@ export function QuickAdd({
                   setError("Guest name and mobile are required.");
                   return;
                 }
+                if (form.roomIds.length === 0) {
+                  setError("Pick at least one room.");
+                  return;
+                }
                 if (selectedUnavailable) {
-                  setError("That room isn't available for those dates. Pick another.");
+                  setError("A selected room isn't available for those dates. Deselect it.");
+                  return;
+                }
+                if (overCapacity) {
+                  setError(
+                    `That room holds at most ${quote?.maxOccupancy} guests. Pick a larger room or split the booking.`,
+                  );
                   return;
                 }
                 setError(null);

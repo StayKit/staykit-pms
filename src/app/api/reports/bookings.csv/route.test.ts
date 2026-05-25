@@ -26,9 +26,11 @@ beforeEach(async () => {
 });
 
 describe("GET /api/reports/bookings.csv", () => {
+  const req = (qs = "") => new Request(`http://localhost/api/reports/bookings.csv${qs}`);
+
   it("returns 401 when unauthenticated", async () => {
     mockCtx.mockResolvedValue(null);
-    const res = await GET();
+    const res = await GET(req());
     expect(res.status).toBe(401);
   });
 
@@ -58,7 +60,7 @@ describe("GET /api/reports/bookings.csv", () => {
       },
     });
 
-    const res = await GET();
+    const res = await GET(req());
     expect(res.headers.get("content-type")).toContain("text/csv");
     expect(res.headers.get("content-disposition")).toContain("attachment");
     const text = await res.text();

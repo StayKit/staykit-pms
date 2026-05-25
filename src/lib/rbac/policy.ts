@@ -70,9 +70,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   // Front-desk / housekeeping: operate the day (incl. guest lookups and Form C at the
   // desk), but no financial power (payments:write/refund) and no PII destruction (guests:write).
+  // They can cancel a booking they just made / a counter cancellation (audit P1 #8).
   STAFF: [
     "bookings:read",
     "bookings:write",
+    "bookings:cancel",
     "properties:read",
     "guests:read",
     "notifications:read",

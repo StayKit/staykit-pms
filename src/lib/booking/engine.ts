@@ -51,11 +51,21 @@ export class BookingValidationError extends Error {
 export interface CreateBookingInput {
   ownerId: string;
   propertyId: string;
-  roomId: string;
+  /** Single room (back-compat). For a group/family booking, use `roomIds` instead. */
+  roomId?: string;
+  /** Multiple rooms in one booking (audit P1 #9). Falls back to `[roomId]`. */
+  roomIds?: string[];
   channelKey: string;
   checkIn: string | Date;
   checkOut: string | Date;
-  guest: { name: string; phone: string; email?: string | null; isForeign?: boolean };
+  guest: {
+    name: string;
+    phone: string;
+    email?: string | null;
+    isForeign?: boolean;
+    city?: string | null;
+    state?: string | null;
+  };
   adults?: number;
   children?: number;
   /** Per-night rate in paise. If omitted, derived from rate plans / base rate. */
@@ -74,31 +84,49 @@ export async function createBooking(input: CreateBookingInput) {
   const nights = nightsBetween(checkIn, checkOut);
   if (nights < 1) throw new BookingValidationError("Check-out must be after check-in.");
 
-  const room = await prisma.room.findFirst({
-    where: { id: input.roomId, propertyId: input.propertyId },
+  const roomIds = input.roomIds?.length ? input.roomIds : input.roomId ? [input.roomId] : [];
+  if (roomIds.length === 0) throw new BookingValidationError("Pick at least one room.");
+  const uniqueRoomIds = [...new Set(roomIds)];
+
+  const rooms = await prisma.room.findMany({
+    where: { id: { in: uniqueRoomIds }, propertyId: input.propertyId },
     include: { roomType: true, property: true },
   });
-  if (!room) throw new BookingValidationError("Room not found for this property.");
+  if (rooms.length !== uniqueRoomIds.length) {
+    throw new BookingValidationError("One or more rooms don't belong to this property.");
+  }
+
+  // Occupancy guard (audit P1 #15): don't silently overfill. For a multi-room booking the
+  // capacity is the sum across the rooms. To allow an extra bed, raise a room type's max.
+  const occupants = (input.adults ?? 1) + (input.children ?? 0);
+  const totalCapacity = rooms.reduce((s, r) => s + r.roomType.maxOccupancy, 0);
+  if (occupants > totalCapacity) {
+    throw new BookingValidationError(
+      `${occupants} guests exceed the capacity of the selected room(s) (${totalCapacity}). Add a room or split the booking.`,
+    );
+  }
 
   const channel = await prisma.channelSource.findFirst({
     where: { ownerId: input.ownerId, key: input.channelKey },
   });
   if (!channel) throw new BookingValidationError(`Unknown channel "${input.channelKey}".`);
 
-  // Resolve nightly rates.
+  // Resolve nightly rates per room. A manual rate (if given) applies to every room;
+  // otherwise each room is priced from its own type's rate plans.
   const nightDates = eachNight(checkIn, checkOut);
-  let perNight: { date: Date; rate: number }[];
-  if (input.nightlyRatePaise != null) {
-    perNight = nightDates.map((date) => ({ date, rate: input.nightlyRatePaise! }));
-  } else {
-    const plans = await loadRatePlans(input.propertyId);
-    perNight = quoteStay(nightDates, room.roomTypeId, room.roomType.baseRate, plans).perNight;
-  }
+  const plans = input.nightlyRatePaise != null ? [] : await loadRatePlans(input.propertyId);
+  const perRoom = rooms.map((r) => {
+    const nights =
+      input.nightlyRatePaise != null
+        ? nightDates.map((date) => ({ date, rate: input.nightlyRatePaise! }))
+        : quoteStay(nightDates, r.roomTypeId, r.roomType.baseRate, plans).perNight;
+    return { roomId: r.id, perNight: nights };
+  });
 
-  // GST per the room type's per-night transaction value.
-  const hasGstin = !!room.property.gstin;
+  // GST across every room-night (per-night transaction value drives the 5%/18% band).
+  const hasGstin = !!rooms[0].property.gstin;
   const tax = computeTax(
-    perNight.map((n) => ({ nightlyRatePaise: n.rate, nights: 1 })),
+    perRoom.flatMap((pr) => pr.perNight.map((n) => ({ nightlyRatePaise: n.rate, nights: 1 }))),
     hasGstin,
   );
 
@@ -106,6 +134,17 @@ export async function createBooking(input: CreateBookingInput) {
   // The phone is the guest's identity, so normalise it first — "+91-98765 43210" and
   // "9876543210" must resolve to the same record rather than creating a duplicate.
   const phone = normalizePhone(input.guest.phone);
+
+  // "Do not book" guard (audit P2 #25): refuse a booking for a blacklisted guest.
+  const existingGuest = await prisma.guest.findUnique({
+    where: { ownerId_phone: { ownerId: input.ownerId, phone } },
+    select: { blacklisted: true, name: true },
+  });
+  if (existingGuest?.blacklisted) {
+    throw new BookingValidationError(
+      `${existingGuest.name} is marked "do not book". Remove the flag on their guest profile to proceed.`,
+    );
+  }
 
   try {
     const booking = await prisma.$transaction(
@@ -117,6 +156,8 @@ export async function createBooking(input: CreateBookingInput) {
             name: input.guest.name,
             email: input.guest.email ?? undefined,
             isForeign: input.guest.isForeign ?? undefined,
+            city: input.guest.city ?? undefined,
+            state: input.guest.state ?? undefined,
           },
           create: {
             ownerId: input.ownerId,
@@ -124,6 +165,8 @@ export async function createBooking(input: CreateBookingInput) {
             phone,
             email: input.guest.email ?? null,
             isForeign: input.guest.isForeign ?? false,
+            city: input.guest.city ?? null,
+            state: input.guest.state ?? null,
           },
         });
 
@@ -148,14 +191,16 @@ export async function createBooking(input: CreateBookingInput) {
           },
         });
 
-        // 3. One BookingRoom row per night — the conflict-prevention insert.
+        // 3. One BookingRoom row per (room, night) — the conflict-prevention insert.
         await tx.bookingRoom.createMany({
-          data: perNight.map((n) => ({
-            bookingId: created.id,
-            roomId: input.roomId,
-            date: n.date,
-            rateApplied: n.rate,
-          })),
+          data: perRoom.flatMap((pr) =>
+            pr.perNight.map((n) => ({
+              bookingId: created.id,
+              roomId: pr.roomId,
+              date: n.date,
+              rateApplied: n.rate,
+            })),
+          ),
         });
 
         return created;
@@ -181,7 +226,7 @@ export async function createBooking(input: CreateBookingInput) {
       to: phone,
       email: input.guest.email ?? null,
       bookingId: booking.id,
-      scope: bookingScope(booking, { name: input.guest.name }, room.property),
+      scope: bookingScope(booking, { name: input.guest.name }, rooms[0].property),
     }).catch(() => {});
 
     return booking;
@@ -349,6 +394,93 @@ export async function checkOutBooking(bookingId: string, ownerId: string, actorN
     await enqueueNotification({
       ownerId,
       triggerKey: "POST_CHECKOUT_THANKS",
+      to: g.phone,
+      email: g.email,
+      bookingId,
+      scope: bookingScope(b, g, b.property),
+    }).catch(() => {});
+  }
+  return b;
+}
+
+/**
+ * Confirm a tentative hold without taking payment (audit P1 #7) — the "confirm, collect
+ * later" path so staff don't have to fake a cash payment to firm up a room.
+ */
+export async function confirmBookingHold(bookingId: string, ownerId: string, actorName: string) {
+  const existing = await prisma.booking.findUnique({ where: { id: bookingId } });
+  if (!existing) throw new BookingValidationError("Booking not found.");
+  if (existing.status !== "TENTATIVE") {
+    throw new BookingValidationError("Only a tentative hold can be confirmed this way.");
+  }
+  const b = await prisma.booking.update({
+    where: { id: bookingId },
+    data: { status: "CONFIRMED" },
+    include: {
+      property: true,
+      guests: { where: { isPrimary: true }, include: { guest: true } },
+    },
+  });
+  await writeAudit({
+    ownerId,
+    actorType: "USER",
+    actorName,
+    action: "BOOKING_CONFIRMED",
+    entityType: "Booking",
+    entityId: bookingId,
+    summary: `confirmed booking ${b.ref} (collect payment later)`,
+  });
+  const g = b.guests[0]?.guest;
+  if (g) {
+    await enqueueNotification({
+      ownerId,
+      triggerKey: "BOOKING_CONFIRMED",
+      to: g.phone,
+      email: g.email,
+      bookingId,
+      scope: bookingScope(b, g, b.property),
+    }).catch(() => {});
+  }
+  return b;
+}
+
+/**
+ * Record a no-show (audit P1 #6): the guest never arrived. Keeps the booking history
+ * but the NO_SHOW status excludes it from occupancy/revenue. Only valid before check-in.
+ */
+export async function markNoShow(bookingId: string, ownerId: string, actorName: string) {
+  const existing = await prisma.booking.findUnique({ where: { id: bookingId } });
+  if (!existing) throw new BookingValidationError("Booking not found.");
+  if (!["TENTATIVE", "CONFIRMED"].includes(existing.status)) {
+    throw new BookingValidationError("Only an upcoming booking can be marked no-show.");
+  }
+  const b = await prisma.$transaction(async (tx) => {
+    const updated = await tx.booking.update({
+      where: { id: bookingId },
+      data: { status: "NO_SHOW" },
+      include: {
+        property: true,
+        guests: { where: { isPrimary: true }, include: { guest: true } },
+      },
+    });
+    // Free the room nights so the dates are bookable again.
+    await tx.bookingRoom.deleteMany({ where: { bookingId } });
+    return updated;
+  });
+  await writeAudit({
+    ownerId,
+    actorType: "USER",
+    actorName,
+    action: "BOOKING_NO_SHOW",
+    entityType: "Booking",
+    entityId: bookingId,
+    summary: `marked booking ${b.ref} as no-show`,
+  });
+  const g = b.guests[0]?.guest;
+  if (g) {
+    await enqueueNotification({
+      ownerId,
+      triggerKey: "NO_SHOW",
       to: g.phone,
       email: g.email,
       bookingId,

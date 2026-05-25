@@ -48,6 +48,9 @@ export default async function ReportsPage({
     });
   }
 
+  const bookingsCsvHref = hasCustom
+    ? `/api/reports/bookings.csv?from=${from}&to=${to}`
+    : "/api/reports/bookings.csv";
   const metricsK = hasCustom ? focusK : monthK;
   const metricsLabel = hasCustom
     ? `${longDate(customFrom)} – ${longDate(parseYmd(to!))}`
@@ -62,14 +65,21 @@ export default async function ReportsPage({
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <ReportsDateRange />
+          <Link className="btn" href="/reports/invoices">
+            <Icon name="book" className="icon-sm" /> Invoices
+          </Link>
           <Link className="btn" href="/reports/payments">
             <Icon name="credit-card" className="icon-sm" /> Payments
           </Link>
           <Link className="btn" href="/reports/audit">
             <Icon name="shield-check" className="icon-sm" /> Audit
           </Link>
-          <a className="btn" href="/api/reports/bookings.csv">
+          <a className="btn" href="/api/reports/foreigners.csv">
+            <Icon name="globe" className="icon-sm" /> Foreigners (Form C)
+          </a>
+          <a className="btn" href={bookingsCsvHref}>
             <Icon name="external" className="icon-sm" /> Export CSV
+            {hasCustom ? " (range)" : ""}
           </a>
         </div>
       </div>

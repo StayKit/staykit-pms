@@ -8,6 +8,16 @@ import { shortDate } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { GuestActions } from "@/components/owner/GuestActions";
 import { GuestEditForm } from "@/components/owner/GuestEditForm";
+import { GuestCrmPanel } from "@/components/owner/GuestCrmPanel";
+
+function parseTags(s: string): string[] {
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? v.map(String) : [];
+  } catch {
+    return [];
+  }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +56,16 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
               {guest.isForeign && (
                 <Icon name="globe" className="icon-sm" style={{ color: "var(--muted)" }} />
               )}
+              {guest.vip && (
+                <span className="pill pill-brand">
+                  <Icon name="sparkles" className="icon-sm" /> VIP
+                </span>
+              )}
+              {guest.blacklisted && (
+                <span className="pill pill-unpaid">
+                  <Icon name="lock" className="icon-sm" /> Do not book
+                </span>
+              )}
             </h2>
             <div className="sub">
               {guest.city ?? "—"} · {stays.length} stay{stays.length === 1 ? "" : "s"} ·{" "}
@@ -79,6 +99,15 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
             <div className="text-sm">{guest.notes}</div>
           </div>
         )}
+        <GuestCrmPanel
+          guestId={guest.id}
+          initial={{
+            vip: guest.vip,
+            blacklisted: guest.blacklisted,
+            tags: parseTags(guest.tags),
+          }}
+        />
+
         <div style={{ marginTop: 16 }}>
           <GuestEditForm
             guestId={guest.id}
@@ -86,6 +115,7 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
               name: guest.name,
               email: guest.email ?? "",
               city: guest.city ?? "",
+              state: guest.state ?? "",
               notes: guest.notes ?? "",
             }}
           />

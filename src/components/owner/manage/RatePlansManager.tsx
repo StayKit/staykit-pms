@@ -3,7 +3,42 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { Toast } from "@/components/Toast";
 import { createRatePlanAction, deleteRatePlanAction } from "@/lib/actions/rateplans";
+
+function isoPlus(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Starter templates so a first-time host isn't staring at a blank form (audit P2 #21). */
+const STARTERS = [
+  {
+    label: "Weekend",
+    name: "Weekend rate",
+    priority: 20,
+    from: isoPlus(0),
+    to: isoPlus(120),
+    minStay: 1,
+  },
+  {
+    label: "Festive season",
+    name: "Festive season",
+    priority: 30,
+    from: isoPlus(0),
+    to: isoPlus(30),
+    minStay: 2,
+  },
+  {
+    label: "Off-season",
+    name: "Off-season",
+    priority: 10,
+    from: isoPlus(0),
+    to: isoPlus(90),
+    minStay: 1,
+  },
+];
 
 export interface RatePlanRow {
   id: string;
@@ -34,6 +69,19 @@ export function RatePlansManager({
   const [minStay, setMinStay] = useState("1");
   const [ovr, setOvr] = useState<Record<string, string>>({});
 
+  // Priority ties make which-plan-wins ambiguous (audit P2 #21): flag them.
+  const priorityCounts = new Map<number, number>();
+  for (const p of plans) priorityCounts.set(p.priority, (priorityCounts.get(p.priority) ?? 0) + 1);
+  const conflicts = plans.filter((p) => (priorityCounts.get(p.priority) ?? 0) > 1);
+
+  function applyStarter(s: (typeof STARTERS)[number]) {
+    setName(s.name);
+    setPriority(String(s.priority));
+    setStart(s.from);
+    setEnd(s.to);
+    setMinStay(String(s.minStay));
+  }
+
   function create() {
     start(async () => {
       const overrides = roomTypes
@@ -61,6 +109,16 @@ export function RatePlansManager({
   return (
     <div className="card" style={{ padding: 16 }}>
       <h4 style={{ marginTop: 0 }}>New rate plan</h4>
+      <div className="chips" style={{ marginBottom: 12 }}>
+        <span className="text-xs text-muted" style={{ alignSelf: "center", marginRight: 4 }}>
+          Start from:
+        </span>
+        {STARTERS.map((s) => (
+          <button key={s.label} type="button" className="chip" onClick={() => applyStarter(s)}>
+            {s.label}
+          </button>
+        ))}
+      </div>
       <div className="field-row">
         <div className="field">
           <label>Name</label>
@@ -116,6 +174,23 @@ export function RatePlansManager({
         <Icon name="plus" className="icon-sm" /> Create plan
       </button>
 
+      {conflicts.length > 0 && (
+        <div
+          style={{
+            marginTop: 16,
+            padding: "10px 14px",
+            borderRadius: 8,
+            background: "var(--st-tentative-bg, var(--surface-2))",
+            border: "1px solid var(--st-tentative, var(--line))",
+            fontSize: 13,
+          }}
+        >
+          <Icon name="alert" className="icon-sm" /> Two or more plans share the same priority (
+          {[...new Set(conflicts.map((c) => c.priority))].join(", ")}). When ranges overlap, which
+          one applies is ambiguous — give the plan you want to win a higher priority.
+        </div>
+      )}
+
       <table className="tbl" style={{ marginTop: 16 }}>
         <thead>
           <tr>
@@ -133,7 +208,18 @@ export function RatePlansManager({
               <td className="text-sm">
                 {p.startDate} → {p.endDate}
               </td>
-              <td>{p.priority}</td>
+              <td>
+                {p.priority}
+                {(priorityCounts.get(p.priority) ?? 0) > 1 && (
+                  <span
+                    className="pill pill-tentative"
+                    style={{ marginLeft: 6 }}
+                    title="Another plan shares this priority"
+                  >
+                    tie
+                  </span>
+                )}
+              </td>
               <td className="text-sm">
                 {p.overrides.length
                   ? p.overrides
@@ -167,11 +253,7 @@ export function RatePlansManager({
           )}
         </tbody>
       </table>
-      {msg && (
-        <div className="dev-code" style={{ marginTop: 12 }}>
-          {msg}
-        </div>
-      )}
+      {msg && <Toast message={msg} onClose={() => setMsg(null)} />}
     </div>
   );
 }

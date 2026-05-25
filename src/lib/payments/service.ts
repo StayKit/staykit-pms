@@ -4,8 +4,9 @@
 import { prisma } from "../db";
 import { APP } from "../config";
 import { writeAudit } from "../audit";
-import { createPaymentLink, initiateRefund } from "./razorpay/client";
+import { createPaymentLink, cancelPaymentLink, initiateRefund } from "./razorpay/client";
 import { enqueueNotification } from "../notify/dispatch";
+import { issueInvoiceNumber } from "../invoice";
 
 export async function createPaymentLinkForBooking(
   bookingId: string,
@@ -27,6 +28,15 @@ export async function createPaymentLinkForBooking(
 
   const amount = opts.amountPaise ?? booking.totalAmount - booking.amountPaid;
   if (amount <= 0) throw new Error("Nothing left to collect on this booking.");
+
+  // Cancel any still-live link first so the guest can't pay an old/stale amount (audit P1 #12).
+  const liveLinks = await prisma.paymentLink.findMany({
+    where: { bookingId: booking.id, status: { in: ["CREATED", "PARTIALLY_PAID"] } },
+  });
+  for (const old of liveLinks) {
+    await cancelPaymentLink(old.razorpayLinkId).catch(() => {});
+    await prisma.paymentLink.update({ where: { id: old.id }, data: { status: "CANCELLED" } });
+  }
 
   const link = await createPaymentLink({
     amountPaise: amount,
@@ -64,28 +74,49 @@ export async function createPaymentLinkForBooking(
   return { row, mock: link.mock, shortUrl: link.shortUrl };
 }
 
-/** Apply a captured payment (used by the webhook handler and the mock "mark paid"). */
+/** Apply a captured payment (used by the webhook handler and the mock "mark paid").
+ * A deposit payment (`isDeposit`) is tracked apart from room revenue: it lifts
+ * `depositHeld`, not `amountPaid`, and does not trigger invoice issuance. */
 export async function applyPayment(
   bookingId: string,
   amountPaise: number,
-  meta: { razorpayPaymentId?: string; method?: string; paymentLinkId?: string } = {},
+  meta: {
+    razorpayPaymentId?: string;
+    method?: string;
+    paymentLinkId?: string;
+    isDeposit?: boolean;
+  } = {},
 ) {
   const payment = await prisma.$transaction(async (tx) => {
+    // Manual payments (cash/UPI/bank handed to the owner) are settled the moment they're
+    // recorded — the money is already in hand. Online (Razorpay) captures stay unsettled
+    // until the settlement webhook/cron reconciles them (audit P2 #19).
+    const now = new Date();
+    const directlySettled = !meta.razorpayPaymentId;
     const created = await tx.payment.create({
       data: {
         bookingId,
         amount: amountPaise,
+        isDeposit: meta.isDeposit ?? false,
         status: "CAPTURED",
-        capturedAt: new Date(),
+        capturedAt: now,
         method: meta.method,
         razorpayPaymentId: meta.razorpayPaymentId,
         paymentLinkId: meta.paymentLinkId,
+        ...(directlySettled ? { settledAt: now, settlementId: "DIRECT" } : {}),
       },
     });
     const booking = await tx.booking.update({
       where: { id: bookingId },
-      data: { amountPaid: { increment: amountPaise } },
+      data: meta.isDeposit
+        ? { depositHeld: { increment: amountPaise } }
+        : { amountPaid: { increment: amountPaise } },
     });
+    // The first rupee of room revenue turns the proforma into a tax invoice — assign a
+    // gapless serial now and freeze it (audit P0 #3).
+    if (!meta.isDeposit && !booking.invoiceNumber && booking.amountPaid > 0) {
+      await issueInvoiceNumber(tx, bookingId);
+    }
     if (meta.paymentLinkId) {
       const link = await tx.paymentLink.findUnique({ where: { id: meta.paymentLinkId } });
       if (link) {
@@ -107,7 +138,7 @@ export async function applyPayment(
     include: { property: true, guests: { where: { isPrimary: true }, include: { guest: true } } },
   });
   const guest = booking?.guests[0]?.guest;
-  if (booking && guest) {
+  if (booking && guest && !meta.isDeposit) {
     await enqueueNotification({
       ownerId: booking.property.ownerId,
       triggerKey: "PAYMENT_RECEIVED",

@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { Toast } from "@/components/Toast";
 import {
   createTeamMemberAction,
   updateTeamMemberAction,
   toggleTeamMemberActiveAction,
+  inviteTeamMemberAction,
 } from "@/lib/actions/team";
 import type { Role } from "@/lib/rbac/policy";
 
@@ -153,14 +155,29 @@ export function TeamManager({
                     <span className="pill pill-neutral">Disabled</span>
                   )}
                 </td>
-                <td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <button
+                    className="btn btn-sm"
+                    disabled={pending}
+                    title="Send a sign-in invite"
+                    onClick={() =>
+                      start(async () => {
+                        const res = await inviteTeamMemberAction(m.id);
+                        setMsg(res.message ?? (res.ok ? "Invite sent." : "Could not send invite."));
+                        router.refresh();
+                      })
+                    }
+                  >
+                    <Icon name="send" className="icon-sm" /> Invite
+                  </button>
                   {!m.isSelf && (
                     <button
                       className="btn btn-sm"
                       disabled={pending}
                       onClick={() =>
                         start(async () => {
-                          await toggleTeamMemberActiveAction(m.id);
+                          const res = await toggleTeamMemberActiveAction(m.id);
+                          setMsg(res.message ?? "Updated.");
                           router.refresh();
                         })
                       }
@@ -174,11 +191,7 @@ export function TeamManager({
           </tbody>
         </table>
       </div>
-      {msg && (
-        <div className="dev-code" style={{ marginTop: 14 }}>
-          {msg}
-        </div>
-      )}
+      {msg && <Toast message={msg} onClose={() => setMsg(null)} timeout={6000} />}
     </>
   );
 }

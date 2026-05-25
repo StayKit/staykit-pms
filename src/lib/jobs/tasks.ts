@@ -7,6 +7,7 @@ import { writeAudit } from "../audit";
 import { addDays, utcMidnight } from "../dates";
 import { RETENTION } from "../config";
 import { deleteStoredFile } from "../storage";
+import { renderTemplate } from "../notify/template";
 
 /**
  * OCCUPANCY_SNAPSHOT — write one DailyOccupancy row per active property for `night`
@@ -126,6 +127,106 @@ export async function purgeExpiredGuestIds(now = new Date()) {
   return { purged };
 }
 
+/**
+ * Mark payment links whose expiry has passed as EXPIRED (audit P1 #12) so the guest
+ * portal and reports never present a dead link as payable.
+ */
+export async function expireStalePaymentLinks(now = new Date()) {
+  const res = await prisma.paymentLink.updateMany({
+    where: { status: { in: ["CREATED", "PARTIALLY_PAID"] }, expiresAt: { lt: now } },
+    data: { status: "EXPIRED" },
+  });
+  return { expired: res.count };
+}
+
+/**
+ * Triggers the scheduled dispatcher fires relative to a booking's check-in, with the
+ * default offset (minutes; negative = before). An owner only needs to make the template
+ * active — no separate automation row required. (Event triggers like BOOKING_CONFIRMED
+ * already fire from the engine.) An explicit NotificationAutomation can override the offset.
+ */
+const ARRIVAL_TRIGGER_DEFAULTS: Record<string, number> = {
+  PRE_ARRIVAL_24H: -1440, // 24h before check-in
+  CHECK_IN_INSTRUCTIONS: 0, // morning of arrival (sent at the daily tick)
+};
+
+/**
+ * Dispatch automated, time-based reminders (audit P1 #10). For each active arrival
+ * template, find upcoming bookings whose `checkIn + offset` is now due and enqueue the
+ * message once (deduped on bookingId+templateId). This is what makes "24h before
+ * check-in" / "check-in instructions" actually send on their own — previously the
+ * templates existed but nothing dispatched them.
+ */
+export async function dispatchScheduledReminders(now = new Date()) {
+  const templates = await prisma.notificationTemplate.findMany({
+    where: { active: true, triggerKey: { in: Object.keys(ARRIVAL_TRIGGER_DEFAULTS) } },
+  });
+
+  let queued = 0;
+  for (const template of templates) {
+    // An explicit automation (if the owner made one) overrides the default offset.
+    const automation = await prisma.notificationAutomation.findFirst({
+      where: { ownerId: template.ownerId, templateId: template.id, active: true },
+    });
+    const offset = automation?.delayMinutes ?? ARRIVAL_TRIGGER_DEFAULTS[template.triggerKey];
+
+    // Candidate bookings: upcoming/active, not cancelled/no-show, for this owner.
+    const bookings = await prisma.booking.findMany({
+      where: {
+        property: { ownerId: template.ownerId },
+        status: { in: ["TENTATIVE", "CONFIRMED", "CHECKED_IN"] },
+        // Only look a few days around now to avoid back-blasting historical bookings.
+        checkIn: { gte: addDays(now, -2), lte: addDays(now, 14) },
+      },
+      include: {
+        property: true,
+        guests: { where: { isPrimary: true }, include: { guest: true } },
+      },
+    });
+
+    for (const b of bookings) {
+      const target = new Date(b.checkIn.getTime() + offset * 60_000);
+      // Due once `target` has passed, with a 2-day grace so a missed daily tick still sends.
+      if (target > now || target < addDays(now, -2)) continue;
+
+      const already = await prisma.notificationLog.findFirst({
+        where: { bookingId: b.id, templateId: template.id, triggerKey: template.triggerKey },
+      });
+      if (already) continue;
+
+      const guest = b.guests[0]?.guest;
+      if (!guest) continue;
+      const dest = template.channel === "EMAIL" ? guest.email : guest.phone;
+      if (!dest) continue;
+
+      const scope = {
+        guest: { name: guest.name },
+        booking: {
+          ref: b.ref,
+          checkIn: b.checkIn.toISOString(),
+          checkOut: b.checkOut.toISOString(),
+        },
+        property: { name: b.property.name, checkInTime: b.property.checkInTime },
+        amount: { due: b.totalAmount - b.amountPaid, total: b.totalAmount },
+      };
+      await prisma.notificationLog.create({
+        data: {
+          bookingId: b.id,
+          channel: template.channel,
+          to: dest,
+          templateId: template.id,
+          triggerKey: template.triggerKey,
+          status: "QUEUED",
+          scheduledFor: now,
+          payload: JSON.stringify({ body: renderTemplate(template.body, scope) }),
+        },
+      });
+      queued += 1;
+    }
+  }
+  return { queued };
+}
+
 /** Run all daily cron task bodies; called once per day by the worker after 03:00 IST. */
 export async function runDailyTasks(now = new Date()) {
   return {
@@ -133,5 +234,7 @@ export async function runDailyTasks(now = new Date()) {
     cleanup: await nightlyCleanup(now),
     formC: await formCReminder(now),
     guestIds: await purgeExpiredGuestIds(now),
+    paymentLinks: await expireStalePaymentLinks(now),
+    reminders: await dispatchScheduledReminders(now),
   };
 }

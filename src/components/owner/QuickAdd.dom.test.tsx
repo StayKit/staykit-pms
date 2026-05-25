@@ -82,12 +82,10 @@ describe("QuickAdd", () => {
     expect(screen.getByText("Confirm details")).toBeTruthy();
   });
 
-  it("prefills the room and date from the URL", () => {
+  it("prefills the room from the URL as a selected chip", () => {
     state.search = "new=1&room=r2&date=2026-07-01";
     render(<QuickAdd {...props} />);
-    expect((screen.getByDisplayValue("102 — Cardamom (Deluxe)") as HTMLSelectElement).value).toBe(
-      "r2",
-    );
+    expect(screen.getByRole("button", { name: /Cardamom/ }).className).toContain("selected");
   });
 
   it("closes via the Cancel button", () => {
@@ -96,10 +94,12 @@ describe("QuickAdd", () => {
     expect(state.push).toHaveBeenCalledWith("?");
   });
 
-  it("updates the nightly rate when the room changes", () => {
+  it("supports selecting multiple rooms for a group booking", () => {
     render(<QuickAdd {...props} />);
-    const select = screen.getByDisplayValue("101 — Hibiscus (Deluxe)") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "r2" } });
-    expect(screen.getByDisplayValue("4200") as HTMLInputElement).toBeTruthy();
+    // r1 (Hibiscus) is selected by default; add the second room.
+    fireEvent.click(screen.getByRole("button", { name: /Cardamom/ }));
+    expect(screen.getByRole("button", { name: /Hibiscus/ }).className).toContain("selected");
+    expect(screen.getByRole("button", { name: /Cardamom/ }).className).toContain("selected");
+    expect(screen.getByText(/2 selected/)).toBeTruthy();
   });
 });

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { Toast } from "@/components/Toast";
 import {
   createMaintenanceBlockAction,
   deleteMaintenanceBlockAction,
@@ -133,11 +134,7 @@ export function MaintenanceManager({
           )}
         </tbody>
       </table>
-      {msg && (
-        <div className="dev-code" style={{ marginTop: 12 }}>
-          {msg}
-        </div>
-      )}
+      {msg && <Toast message={msg} onClose={() => setMsg(null)} />}
     </div>
   );
 }

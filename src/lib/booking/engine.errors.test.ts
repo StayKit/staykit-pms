@@ -4,7 +4,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // the engine should re-throw it (not swallow it as a DoubleBookingError).
 vi.mock("@/lib/db", () => ({
   prisma: {
-    room: { findFirst: vi.fn() },
+    room: { findMany: vi.fn() },
+    guest: { findUnique: vi.fn() },
     channelSource: { findFirst: vi.fn() },
     ratePlan: { findMany: vi.fn() },
     $transaction: vi.fn(),
@@ -14,18 +15,22 @@ vi.mock("@/lib/db", () => ({
 import { createBooking, DoubleBookingError } from "./engine";
 import { prisma } from "@/lib/db";
 
-const room = prisma.room.findFirst as unknown as ReturnType<typeof vi.fn>;
+const room = prisma.room.findMany as unknown as ReturnType<typeof vi.fn>;
+const guest = prisma.guest.findUnique as unknown as ReturnType<typeof vi.fn>;
 const channel = prisma.channelSource.findFirst as unknown as ReturnType<typeof vi.fn>;
 const tx = prisma.$transaction as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  room.mockResolvedValue({
-    id: "r1",
-    roomTypeId: "t1",
-    roomType: { baseRate: 6300_00 },
-    property: { gstin: null },
-  });
+  room.mockResolvedValue([
+    {
+      id: "r1",
+      roomTypeId: "t1",
+      roomType: { baseRate: 6300_00, maxOccupancy: 3 },
+      property: { gstin: null },
+    },
+  ]);
+  guest.mockResolvedValue(null);
   channel.mockResolvedValue({ id: "c1" });
 });
 

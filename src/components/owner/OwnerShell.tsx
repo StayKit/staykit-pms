@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { BrandGlyph } from "@/components/BrandGlyph";
-import { NAV, titleForPath } from "./nav";
+import { NAV, navForRole, titleForPath } from "./nav";
+import type { Role } from "@/lib/rbac/policy";
 import { QuickAdd, type QuickAddChannel, type QuickAddRoom } from "./QuickAdd";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { KeyboardShortcuts } from "./KeyboardShortcuts";
@@ -37,8 +38,9 @@ export function OwnerShell({
   const [navOpen, setNavOpen] = useState(false);
   // Close the mobile nav drawer whenever the route changes.
   useEffect(() => setNavOpen(false), [path]);
-  const workspace = NAV.filter((n) => n.section === "workspace");
-  const advanced = NAV.filter((n) => n.section === "advanced");
+  const visibleNav = navForRole(user.role as Role);
+  const workspace = visibleNav.filter((n) => n.section === "workspace");
+  const advanced = visibleNav.filter((n) => n.section === "advanced");
   // The topbar lives only on the Dashboard; every other page carries its own heading, so elsewhere
   // it would just duplicate the nav. Those pages get a floating "New booking" button instead.
   const showTopbar = path === "/dashboard";

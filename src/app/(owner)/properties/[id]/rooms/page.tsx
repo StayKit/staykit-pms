@@ -8,6 +8,15 @@ import { RoomsManager } from "@/components/owner/manage/RoomsManager";
 
 export const dynamic = "force-dynamic";
 
+function safeJsonArray(s: string): string[] {
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? v.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function RoomsPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = (await getAppContext())!;
   const { id } = await params;
@@ -65,6 +74,8 @@ export default async function RoomsPage({ params }: { params: Promise<{ id: stri
           name: t.name,
           baseRateRupees: toRupees(t.baseRate),
           maxOccupancy: t.maxOccupancy,
+          color: t.color,
+          description: t.description ?? "",
           roomCount: t._count.rooms,
         }))}
         rooms={rooms.map((r) => ({
@@ -72,8 +83,10 @@ export default async function RoomsPage({ params }: { params: Promise<{ id: stri
           name: r.name,
           number: r.number,
           typeName: r.roomType.name,
+          roomTypeId: r.roomTypeId,
           active: r.active,
           cleanliness: r.cleanliness,
+          amenities: safeJsonArray(r.amenities),
           occupant: occupancy.get(r.id) ?? null,
         }))}
       />

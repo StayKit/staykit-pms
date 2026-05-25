@@ -44,6 +44,7 @@ const editSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email().optional().or(z.literal("")),
   city: z.string().optional().or(z.literal("")),
+  state: z.string().optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
 });
 
@@ -63,10 +64,57 @@ export async function updateGuestAction(
         name: data.name,
         email: data.email || null,
         city: data.city || null,
+        state: data.state || null,
         notes: data.notes || null,
       },
     });
     revalidatePath(`/guests/${guestId}`);
+    return ok();
+  } catch (e) {
+    if (e instanceof z.ZodError) return fail(e.errors[0].message);
+    return failFrom(e);
+  }
+}
+
+const crmSchema = z.object({
+  vip: z.boolean().optional(),
+  blacklisted: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+/** Update CRM flags/tags on a guest (audit P2 #25): VIP, do-not-book, and free-text tags. */
+export async function setGuestCrmAction(
+  guestId: string,
+  input: z.input<typeof crmSchema>,
+): Promise<ActionResult> {
+  try {
+    const data = crmSchema.parse(input);
+    const ctx = await requireContext();
+    assertAccess(ctx, "bookings:write");
+    const g = await prisma.guest.findFirst({ where: { id: guestId, ownerId: ctx.ownerId } });
+    if (!g) return fail("Guest not found.");
+    const tags = data.tags
+      ? [...new Set(data.tags.map((t) => t.trim()).filter(Boolean))]
+      : undefined;
+    await prisma.guest.update({
+      where: { id: guestId },
+      data: {
+        vip: data.vip ?? undefined,
+        blacklisted: data.blacklisted ?? undefined,
+        ...(tags ? { tags: JSON.stringify(tags) } : {}),
+      },
+    });
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "GUEST_CRM_UPDATED",
+      entityType: "Guest",
+      entityId: guestId,
+      summary: `updated CRM for ${g.name}`,
+    });
+    revalidatePath(`/guests/${guestId}`);
+    revalidatePath("/guests");
     return ok();
   } catch (e) {
     if (e instanceof z.ZodError) return fail(e.errors[0].message);

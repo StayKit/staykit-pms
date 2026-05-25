@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { Toast } from "@/components/Toast";
 import { Avatar, ChannelChip, StatusPill, type DisplayState } from "@/components/ui";
 import {
   checkInAction,
@@ -10,15 +11,25 @@ import {
   sendPaymentLinkAction,
   markPaidAction,
   cancelAction,
+  confirmBookingAction,
+  noShowAction,
   moveBookingAction,
+  quoteBookingAction,
   recordPaymentAction,
+  returnDepositAction,
   updateBookingNotesAction,
 } from "@/lib/actions/bookings";
 import {
   sendBookingNotificationAction,
   resendNotificationAction,
 } from "@/lib/actions/notifications";
-import { refundAction, quoteRefundAction, type RefundQuoteResult } from "@/lib/actions/payments";
+import {
+  refundAction,
+  quoteRefundAction,
+  retryRefundAction,
+  settleRefundManuallyAction,
+  type RefundQuoteResult,
+} from "@/lib/actions/payments";
 import { CANCELLATION_REASONS, type CancellationReason } from "@/lib/booking/cancellation";
 
 export interface BookingDetailData {
@@ -55,6 +66,8 @@ export interface BookingDetailData {
     dueRaw: number;
     taxLabel: string;
     nightly: string;
+    depositHeld: string;
+    depositRaw: number;
   };
   payments: { icon: string; tone: string; title: string; sub: string }[];
   comms: { id: string; icon: string; tone: string; title: string; sub: string }[];
@@ -65,8 +78,11 @@ export interface BookingDetailData {
   guestRequests: string | null;
   /** Present when the guest has asked to cancel (staff still actions it). */
   cancelRequest: { when: string; reason: string | null } | null;
+  /** Refunds Razorpay rejected — surfaced as a banner with retry / settle-manually (audit P0 #5). */
+  failedRefunds: { id: string; amount: string; reason: string | null }[];
   /** Present when the booking can still be moved (room/dates). */
   move: {
+    propertyId: string;
     roomId: string;
     checkInYmd: string;
     checkOutYmd: string;
@@ -112,7 +128,8 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
       <div className="card" style={{ overflow: "hidden" }}>
         <div className="bd-hero">
           <div className="ref">
-            {data.room.number} · {data.room.name}
+            {data.room.number ? `${data.room.number} · ` : ""}
+            {data.room.name}
           </div>
           <h2>{g?.name ?? "Owner block"}</h2>
           <div className="where">
@@ -123,9 +140,20 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
             <StatusPill state={data.state} />
             <ChannelChip channelKey={data.channel.key} name={data.channel.name} />
             {g?.isForeign && (
-              <span className="pill pill-outline">
-                <Icon name="globe" className="icon-sm" /> Foreign national — Form C pending
-              </span>
+              <>
+                <span className="pill pill-outline">
+                  <Icon name="globe" className="icon-sm" /> Foreign national — Form C pending
+                </span>
+                <a
+                  className="pill pill-outline"
+                  href={`/bookings/${data.id}/form-c`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ textDecoration: "none" }}
+                >
+                  <Icon name="external" className="icon-sm" /> Generate Form C
+                </a>
+              </>
             )}
           </div>
         </div>
@@ -152,6 +180,61 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
                 Review the refund policy below, then Cancel to confirm.
               </div>
             </div>
+          </div>
+        )}
+
+        {data.failedRefunds.length > 0 && (
+          <div
+            style={{
+              padding: "12px 18px",
+              background: "var(--st-unpaid-bg)",
+              color: "var(--st-unpaid)",
+              fontSize: 13,
+              borderTop: "1px solid var(--line)",
+            }}
+          >
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <Icon name="alert" className="icon-sm" />
+              <strong>
+                {data.failedRefunds.length === 1 ? "A refund failed" : "Refunds failed"} at Razorpay
+              </strong>
+            </div>
+            {data.failedRefunds.map((r) => (
+              <div
+                key={r.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 8,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 160, color: "var(--ink-2)" }}>
+                  {r.amount}
+                  {r.reason ? ` · ${r.reason}` : ""} — the guest&apos;s money is stuck.
+                </div>
+                <button
+                  className="btn btn-sm"
+                  disabled={pending}
+                  onClick={() => run(() => retryRefundAction(r.id))}
+                >
+                  <Icon name="rotate-ccw" className="icon-sm" /> Retry
+                </button>
+                <button
+                  className="btn btn-sm btn-ghost"
+                  disabled={pending}
+                  title="I refunded the guest by cash/UPI outside Razorpay"
+                  onClick={() => {
+                    if (confirm("Mark this refund settled outside Razorpay (e.g. paid by cash)?")) {
+                      run(() => settleRefundManuallyAction(r.id));
+                    }
+                  }}
+                >
+                  Settle manually
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
@@ -182,7 +265,10 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
               <div className="kv-grid">
                 <KV k="Check-in" v={`${data.checkIn} · ${data.checkInTime}`} />
                 <KV k="Check-out" v={`${data.checkOut} · ${data.checkOutTime}`} />
-                <KV k="Room" v={`${data.room.number} — ${data.room.name}`} />
+                <KV
+                  k={data.room.name.includes("rooms ·") ? "Rooms" : "Room"}
+                  v={data.room.number ? `${data.room.number} — ${data.room.name}` : data.room.name}
+                />
                 <KV
                   k="Guests"
                   v={`${data.adults} adult${data.adults > 1 ? "s" : ""}${data.children ? `, ${data.children} child${data.children > 1 ? "ren" : ""}` : ""}`}
@@ -319,6 +405,52 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
                 }
               />
             </div>
+            {data.money.depositRaw > 0 && (
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 12,
+                  borderRadius: 10,
+                  background: "var(--surface-2)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Icon name="lock" className="icon-sm" />
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>
+                    Security deposit held · {data.money.depositHeld}
+                  </div>
+                  <div className="text-xs text-muted">
+                    Refundable — not counted as room revenue.
+                  </div>
+                </div>
+                <button
+                  className="btn btn-sm"
+                  disabled={pending}
+                  onClick={() => {
+                    if (confirm(`Return the ${data.money.depositHeld} deposit to the guest?`)) {
+                      run(() => returnDepositAction(data.id));
+                    }
+                  }}
+                >
+                  Return
+                </button>
+                <button
+                  className="btn btn-sm btn-ghost"
+                  disabled={pending}
+                  onClick={() => {
+                    if (confirm(`Forfeit the ${data.money.depositHeld} deposit (e.g. damages)?`)) {
+                      run(() => returnDepositAction(data.id, { forfeit: true }));
+                    }
+                  }}
+                >
+                  Forfeit
+                </button>
+              </div>
+            )}
             <h4 style={{ marginTop: 24 }}>Timeline</h4>
             <div>
               {data.payments.length === 0 && (
@@ -447,14 +579,23 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
               <Icon name="log-out" className="icon-sm" /> Check out
             </button>
           ) : data.state === "tentative" ? (
-            <button
-              className="btn btn-primary btn-lg"
-              style={{ flex: 1 }}
-              disabled={pending}
-              onClick={() => run(() => markPaidAction(data.id))}
-            >
-              <Icon name="check" className="icon-sm" /> Confirm & mark paid
-            </button>
+            <>
+              <button
+                className="btn btn-primary btn-lg"
+                style={{ flex: 1 }}
+                disabled={pending}
+                onClick={() => run(() => confirmBookingAction(data.id))}
+              >
+                <Icon name="check" className="icon-sm" /> Confirm (collect later)
+              </button>
+              <button
+                className="btn btn-lg"
+                disabled={pending}
+                onClick={() => run(() => markPaidAction(data.id))}
+              >
+                <Icon name="indian-rupee" className="icon-sm" /> Confirm &amp; mark paid
+              </button>
+            </>
           ) : data.state === "unpaid" || data.state === "partial" ? (
             <>
               {data.onlineEnabled ? (
@@ -494,7 +635,24 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
               <Icon name="key" className="icon-sm" /> Check in
             </button>
           ) : null}
-          {data.state !== "cancelled" && data.state !== "checkedout" && (
+          {(data.state === "tentative" ||
+            data.state === "unpaid" ||
+            data.state === "partial" ||
+            data.state === "paid") && (
+            <button
+              className="btn btn-lg btn-ghost"
+              disabled={pending}
+              title="Guest never arrived"
+              onClick={() => {
+                if (confirm("Mark this booking as a no-show? The room nights will be released.")) {
+                  run(() => noShowAction(data.id));
+                }
+              }}
+            >
+              No-show
+            </button>
+          )}
+          {data.state !== "cancelled" && data.state !== "checkedout" && data.state !== "noshow" && (
             <button
               className="btn btn-lg btn-ghost"
               style={{ color: "var(--st-unpaid)" }}
@@ -511,11 +669,7 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
         </div>
       </div>
 
-      {toast && (
-        <div style={{ marginTop: 14 }} className="dev-code">
-          {toast}
-        </div>
-      )}
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   );
 }
@@ -542,6 +696,8 @@ function RecordPaymentPanel({
   const dueRupees = Math.round(dueRaw / 100);
   const [amount, setAmount] = useState(String(dueRupees));
   const [method, setMethod] = useState("cash");
+  const [reference, setReference] = useState("");
+  const [isDeposit, setIsDeposit] = useState(false);
   const [pending, start] = useTransition();
 
   return (
@@ -568,6 +724,32 @@ function RecordPaymentPanel({
           </select>
         </div>
       </div>
+      <div className="field">
+        <label>
+          Reference / txn ID <span className="hint">(optional)</span>
+        </label>
+        <input
+          value={reference}
+          placeholder="UPI ref, bank UTR, cheque no…"
+          onChange={(e) => setReference(e.target.value)}
+        />
+      </div>
+      <label
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          fontSize: 13,
+          margin: "2px 0 10px",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={isDeposit}
+          onChange={(e) => setIsDeposit(e.target.checked)}
+        />
+        This is a refundable security deposit (tracked separately, not room revenue)
+      </label>
       <button
         className="btn btn-primary"
         disabled={pending || !amount || Number(amount) <= 0}
@@ -576,12 +758,14 @@ function RecordPaymentPanel({
             const res = await recordPaymentAction(bookingId, {
               amountRupees: Number(amount),
               method,
+              reference: reference.trim() || undefined,
+              isDeposit,
             });
             onDone(res.message ?? (res.ok ? "Payment recorded." : "Could not record payment."));
           })
         }
       >
-        <Icon name="check" className="icon-sm" /> Confirm payment
+        <Icon name="check" className="icon-sm" /> {isDeposit ? "Record deposit" : "Confirm payment"}
       </button>
     </div>
   );
@@ -600,7 +784,21 @@ function MovePanel({
   const [roomId, setRoomId] = useState(move.roomId);
   const [checkIn, setCheckIn] = useState(move.checkInYmd);
   const [checkOut, setCheckOut] = useState(move.checkOutYmd);
+  const [preview, setPreview] = useState<{ totalRupees: number; nights: number } | null>(null);
   const [pending, start] = useTransition();
+
+  // Live price preview for the new room/dates so the total never jumps unexpectedly (audit P2 #20).
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setPreview(null);
+    quoteBookingAction({ propertyId: move.propertyId, roomId, checkIn, checkOut }).then((q) => {
+      if (active && q.ok) setPreview({ totalRupees: q.totalRupees, nights: q.nights });
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, roomId, checkIn, checkOut, move.propertyId]);
 
   if (!open) {
     return (
@@ -649,6 +847,24 @@ function MovePanel({
         <button className="btn btn-ghost" onClick={() => setOpen(false)}>
           Cancel
         </button>
+      </div>
+      <div
+        className="text-sm"
+        style={{
+          marginTop: 10,
+          padding: "8px 12px",
+          borderRadius: 8,
+          background: "var(--surface-2)",
+        }}
+      >
+        {preview ? (
+          <>
+            New total: <strong>₹ {preview.totalRupees.toLocaleString("en-IN")}</strong> ·{" "}
+            {preview.nights} night{preview.nights > 1 ? "s" : ""} (incl. GST)
+          </>
+        ) : (
+          <span className="text-muted">Calculating new total…</span>
+        )}
       </div>
       <div className="text-xs text-muted" style={{ marginTop: 8 }}>
         Rates and GST are recalculated for the new room and dates.

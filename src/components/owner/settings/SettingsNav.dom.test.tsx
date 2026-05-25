@@ -19,7 +19,7 @@ beforeEach(() => {
 
 describe("SettingsNav", () => {
   it("renders a link for every section", () => {
-    render(<SettingsNav />);
+    render(<SettingsNav role="OWNER" />);
     expect(screen.getByRole("link", { name: /Property/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Integrations/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Team & roles/ })).toBeTruthy();
@@ -28,14 +28,14 @@ describe("SettingsNav", () => {
 
   it("marks only the active route", () => {
     state.pathname = "/settings/team";
-    render(<SettingsNav />);
+    render(<SettingsNav role="OWNER" />);
     expect(screen.getByRole("link", { name: /Team & roles/ }).className).toContain("active");
     expect(screen.getByRole("link", { name: /Property/ }).className).not.toContain("active");
   });
 
   it("treats nested routes under a section as active", () => {
     state.pathname = "/settings/property/details";
-    render(<SettingsNav />);
+    render(<SettingsNav role="OWNER" />);
     expect(screen.getByRole("link", { name: /Property/ }).className).toContain("active");
   });
 });

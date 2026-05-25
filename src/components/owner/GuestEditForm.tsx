@@ -4,13 +4,14 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { updateGuestAction } from "@/lib/actions/guests";
+import { INDIAN_STATES } from "@/lib/india";
 
 export function GuestEditForm({
   guestId,
   initial,
 }: Readonly<{
   guestId: string;
-  initial: { name: string; email: string; city: string; notes: string };
+  initial: { name: string; email: string; city: string; state: string; notes: string };
 }>) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -51,6 +52,19 @@ export function GuestEditForm({
           <label>City</label>
           <input value={form.city} onChange={(e) => set("city", e.target.value)} />
         </div>
+      </div>
+      <div className="field">
+        <label>
+          Home state <span className="hint">(for GST place of supply)</span>
+        </label>
+        <select value={form.state} onChange={(e) => set("state", e.target.value)}>
+          <option value="">Not specified</option>
+          {INDIAN_STATES.map((s) => (
+            <option key={s.code} value={s.code}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="field">
         <label>Notes</label>

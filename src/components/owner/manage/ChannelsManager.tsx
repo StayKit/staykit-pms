@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { Toast } from "@/components/Toast";
 import {
   createChannelAction,
   toggleChannelAction,
@@ -135,11 +136,7 @@ export function ChannelsManager({ channels }: Readonly<{ channels: ChannelRow[] 
           </tbody>
         </table>
       </div>
-      {msg && (
-        <div className="dev-code" style={{ margin: 14 }}>
-          {msg}
-        </div>
-      )}
+      {msg && <Toast message={msg} onClose={() => setMsg(null)} />}
     </div>
   );
 }

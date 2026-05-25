@@ -23,7 +23,8 @@ describe("can(role, permission)", () => {
     expect(can("STAFF", "bookings:write")).toBe(true);
     expect(can("STAFF", "properties:read")).toBe(true);
     expect(can("STAFF", "payments:refund")).toBe(false);
-    expect(can("STAFF", "bookings:cancel")).toBe(false);
+    // Staff CAN cancel a booking they made / a counter cancellation (audit P1 #8).
+    expect(can("STAFF", "bookings:cancel")).toBe(true);
     expect(can("STAFF", "reports:read")).toBe(false);
   });
 });

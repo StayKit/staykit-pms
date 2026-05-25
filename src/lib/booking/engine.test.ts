@@ -4,6 +4,8 @@ import {
   checkInBooking,
   checkOutBooking,
   cancelBooking,
+  confirmBookingHold,
+  markNoShow,
   DoubleBookingError,
   BookingValidationError,
 } from "./engine";
@@ -183,5 +185,76 @@ describe("check-in / check-out / cancel", () => {
     // The freed nights allow a fresh booking.
     const b2 = await createBooking(baseInput({ guest: { ...guest, phone: "+919800009999" } }));
     expect(b2.id).toBeTruthy();
+  });
+});
+
+describe("confirmBookingHold (P1 #7)", () => {
+  it("confirms a tentative hold without taking payment", async () => {
+    const b = await createBooking(baseInput({ status: "TENTATIVE" }));
+    const out = await confirmBookingHold(b.id, fx.owner.id, "Priya");
+    expect(out.status).toBe("CONFIRMED");
+    const after = await prisma.booking.findUnique({ where: { id: b.id } });
+    expect(after?.amountPaid).toBe(0); // no fake payment
+  });
+
+  it("rejects confirming a non-tentative booking", async () => {
+    const b = await createBooking(baseInput({ status: "CONFIRMED" }));
+    await expect(confirmBookingHold(b.id, fx.owner.id, "Priya")).rejects.toThrow(
+      BookingValidationError,
+    );
+  });
+});
+
+describe("markNoShow (P1 #6)", () => {
+  it("marks an upcoming booking NO_SHOW and frees the room nights", async () => {
+    const b = await createBooking(baseInput());
+    const out = await markNoShow(b.id, fx.owner.id, "Priya");
+    expect(out.status).toBe("NO_SHOW");
+    expect(await prisma.bookingRoom.count({ where: { bookingId: b.id } })).toBe(0);
+    // The freed nights allow a fresh booking.
+    const b2 = await createBooking(baseInput({ guest: { ...guest, phone: "+919800007777" } }));
+    expect(b2.id).toBeTruthy();
+  });
+
+  it("rejects no-show on a checked-out booking", async () => {
+    const b = await createBooking(baseInput());
+    await checkInBooking(b.id, fx.owner.id, "Priya");
+    await checkOutBooking(b.id, fx.owner.id, "Priya");
+    await expect(markNoShow(b.id, fx.owner.id, "Priya")).rejects.toThrow(BookingValidationError);
+  });
+});
+
+describe("multi-room bookings (P1 #9)", () => {
+  it("books two rooms in one booking with rows for each room-night and combined totals", async () => {
+    const room2 = await prisma.room.create({
+      data: {
+        propertyId: fx.property.id,
+        roomTypeId: fx.roomType.id,
+        name: "Room 2",
+        number: "102",
+      },
+    });
+    const b = await createBooking(
+      baseInput({ roomId: undefined, roomIds: [fx.room.id, room2.id], nightlyRatePaise: 5000_00 }),
+    );
+    // 2 rooms × 3 nights = 6 BookingRoom rows.
+    expect(await prisma.bookingRoom.count({ where: { bookingId: b.id } })).toBe(6);
+    expect(b.subtotal).toBe(5000_00 * 3 * 2);
+  });
+
+  it("rejects when total guests exceed combined room capacity", async () => {
+    // Deluxe maxOccupancy is 3 in seedBasic.
+    await expect(createBooking(baseInput({ adults: 5, children: 0 }))).rejects.toThrow(
+      BookingValidationError,
+    );
+  });
+
+  it("blocks a booking for a blacklisted guest", async () => {
+    const b = await createBooking(baseInput());
+    const bg = await prisma.bookingGuest.findFirstOrThrow({ where: { bookingId: b.id } });
+    await prisma.guest.update({ where: { id: bg.guestId }, data: { blacklisted: true } });
+    await expect(
+      createBooking(baseInput({ checkIn: "2026-09-01", checkOut: "2026-09-02" })),
+    ).rejects.toThrow(/do not book/i);
   });
 });

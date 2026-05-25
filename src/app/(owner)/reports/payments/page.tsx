@@ -27,9 +27,31 @@ export default async function PaymentsReportPage() {
   ]);
 
   const collected = payments.reduce((s, p) => s + p.amount, 0);
+  const settled = payments
+    .filter((p) => p.settledAt || p.settlementId)
+    .reduce((s, p) => s + p.amount, 0);
+  const awaitingSettlement = collected - settled;
   const refunded = refunds
     .filter((r) => r.status === "PROCESSED")
     .reduce((s, r) => s + r.amount, 0);
+  const failed = refunds.filter((r) => r.status === "FAILED");
+
+  // Outstanding balances, split into never-paid vs part-paid (audit P2 #23).
+  const open = await prisma.booking.findMany({
+    where: {
+      property: { ownerId: ctx.ownerId },
+      status: { in: ["TENTATIVE", "CONFIRMED", "CHECKED_IN"] },
+    },
+    select: { totalAmount: true, amountPaid: true },
+  });
+  let unpaidDue = 0;
+  let partialDue = 0;
+  for (const b of open) {
+    const due = b.totalAmount - b.amountPaid;
+    if (due <= 0) continue;
+    if (b.amountPaid <= 0) unpaidDue += due;
+    else partialDue += due;
+  }
 
   return (
     <div className="page" style={{ paddingTop: 16 }}>
@@ -40,6 +62,30 @@ export default async function PaymentsReportPage() {
         </div>
       </div>
 
+      {failed.length > 0 && (
+        <div
+          className="card"
+          style={{
+            padding: "12px 16px",
+            marginBottom: 16,
+            background: "var(--st-unpaid-bg)",
+            color: "var(--st-unpaid)",
+            border: "1px solid var(--st-unpaid)",
+          }}
+        >
+          <strong>
+            {failed.length} refund{failed.length > 1 ? "s" : ""} failed at Razorpay
+          </strong>{" "}
+          — open the booking to retry or settle manually:{" "}
+          {failed.map((r, i) => (
+            <span key={r.id}>
+              {i > 0 ? ", " : ""}
+              <Link href={`/bookings/${r.bookingId}`}>{r.booking.ref}</Link>
+            </span>
+          ))}
+        </div>
+      )}
+
       <div
         className="kpi-row"
         style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}
@@ -47,6 +93,20 @@ export default async function PaymentsReportPage() {
         <Stat label="Collected" value={inr(collected)} />
         <Stat label="Refunded" value={inr(refunded)} tone="var(--st-unpaid)" />
         <Stat label="Net" value={inr(collected - refunded)} tone="var(--st-checkedin)" />
+        <Stat
+          label="Awaiting settlement"
+          value={inr(awaitingSettlement)}
+          tone={awaitingSettlement > 0 ? "var(--st-tentative)" : undefined}
+        />
+      </div>
+
+      <div
+        className="kpi-row"
+        style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}
+      >
+        <Stat label="Outstanding — unpaid" value={inr(unpaidDue)} tone="var(--st-unpaid)" />
+        <Stat label="Outstanding — part-paid" value={inr(partialDue)} tone="var(--st-tentative)" />
+        <Stat label="Total to collect" value={inr(unpaidDue + partialDue)} />
       </div>
 
       <div className="card" style={{ overflow: "hidden", marginBottom: 16 }}>

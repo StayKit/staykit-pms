@@ -149,6 +149,25 @@ export function verifyWebhookSignature(rawBody: string, signature: string): bool
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/**
+ * Cancel a payment link so a superseded link can't be paid (audit P1 #12). No-op in
+ * mock mode and for mock link ids. Throws on a real API failure so the caller can decide.
+ */
+export async function cancelPaymentLink(
+  razorpayLinkId: string,
+): Promise<{ cancelled: boolean; mock: boolean }> {
+  if (!isConfigured() || razorpayLinkId.startsWith("plink_mock_")) {
+    return { cancelled: true, mock: true };
+  }
+  const auth = Buffer.from(`${keyId()}:${keySecret()}`).toString("base64");
+  const res = await fetch(`https://api.razorpay.com/v1/payment_links/${razorpayLinkId}/cancel`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${auth}` },
+  });
+  if (!res.ok) throw new Error(`Razorpay link cancel failed (${res.status}): ${await res.text()}`);
+  return { cancelled: true, mock: false };
+}
+
 export async function initiateRefund(
   razorpayPaymentId: string,
   amountPaise: number,

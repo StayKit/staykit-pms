@@ -63,6 +63,15 @@ export default async function DashboardPage() {
     }),
   ]);
 
+  // Surface delivery failures so the owner doesn't have to dig into the log (audit P2 #27).
+  const failedMsgs = await prisma.notificationLog.count({
+    where: {
+      booking: { property: { ownerId: ctx.ownerId } },
+      status: { in: ["FAILED", "DLQ"] },
+      createdAt: { gte: addDays(t0, -14) },
+    },
+  });
+
   const totalRooms = property._count.rooms;
   const occRooms = new Set(occupiedTonight.map((o) => o.roomId)).size;
   const occPct = totalRooms ? Math.round((occRooms / totalRooms) * 100) : 0;
@@ -83,6 +92,33 @@ export default async function DashboardPage() {
           <b>{pendingRows.length} payments still to collect</b> today.
         </div>
       </div>
+
+      {failedMsgs > 0 && (
+        <Link
+          href="/notifications/log?status=failed"
+          className="card"
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            padding: "12px 16px",
+            marginBottom: 20,
+            textDecoration: "none",
+            color: "var(--st-unpaid)",
+            background: "var(--st-unpaid-bg)",
+            border: "1px solid var(--st-unpaid)",
+          }}
+        >
+          <Icon name="alert" className="icon" />
+          <div style={{ fontSize: 13.5, flex: 1 }}>
+            <strong>
+              {failedMsgs} message{failedMsgs > 1 ? "s" : ""} didn&apos;t reach a guest
+            </strong>{" "}
+            in the last 2 weeks — open the delivery log to see which and resend.
+          </div>
+          <Icon name="chevron-right" className="icon-sm" />
+        </Link>
+      )}
 
       <div className="kpi-grid">
         <Kpi

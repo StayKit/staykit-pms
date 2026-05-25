@@ -5,8 +5,11 @@
  */
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
+import { getGuestSession } from "@/lib/auth/session";
 import { inr } from "@/lib/money";
 import { GST } from "@/lib/config";
+import { placeOfSupply } from "@/lib/invoice";
+import { stateName } from "@/lib/india";
 import { longDate, nightsBetween } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -18,13 +21,55 @@ function esc(s: string): string {
   );
 }
 
+interface BookingRoomLike {
+  roomId: string;
+  rateApplied: number;
+  room: { name: string; roomType: { name: string } };
+}
+
+/** One invoice line per room in the booking (audit P1 #9 multi-room). */
+function roomLines(
+  rows: BookingRoomLike[],
+  nights: number,
+  fromLabel: string,
+  toLabel: string,
+): string {
+  const byRoom = new Map<string, { name: string; type: string; amount: number }>();
+  for (const r of rows) {
+    const cur = byRoom.get(r.roomId) ?? {
+      name: r.room.name,
+      type: r.room.roomType.name,
+      amount: 0,
+    };
+    cur.amount += r.rateApplied;
+    byRoom.set(r.roomId, cur);
+  }
+  const nightsLabel = `${nights} night${nights > 1 ? "s" : ""}`;
+  if (byRoom.size === 0) {
+    return `<tr><td>Stay · ${nightsLabel}</td><td class="amt">${inr(0)}</td></tr>`;
+  }
+  return [...byRoom.values()]
+    .map(
+      (r) =>
+        `<tr><td>${esc(r.name)} — ${esc(r.type)} · ${nightsLabel}<br/>
+          <span class="muted">${fromLabel} → ${toLabel}</span></td>
+          <td class="amt">${inr(r.amount)}</td></tr>`,
+    )
+    .join("\n");
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const ctx = await getAppContext();
-  if (!ctx) return new Response("Unauthorized", { status: 401 });
   const { id } = await params;
+  // Owner/staff access by tenant; a logged-in guest can fetch their own booking's
+  // invoice/receipt too (audit P1 #14).
+  const ctx = await getAppContext();
+  const guestSession = ctx ? null : await getGuestSession();
+  if (!ctx && !guestSession) return new Response("Unauthorized", { status: 401 });
 
   const b = await prisma.booking.findFirst({
-    where: { id, property: { ownerId: ctx.ownerId } },
+    where: ctx
+      ? { id, property: { ownerId: ctx.ownerId } }
+      : { id, guests: { some: { isPrimary: true, guest: { phone: guestSession!.phone } } } },
     include: {
       property: true,
       guests: { where: { isPrimary: true }, include: { guest: true } },
@@ -36,11 +81,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const guest = b.guests[0]?.guest;
   const nights = nightsBetween(b.checkIn, b.checkOut);
   const hasGst = !!b.property.gstin && b.taxAmount > 0;
-  const halfTax = Math.round(b.taxAmount / 2);
-  const invoiceNo = `${b.property.invoicePrefix}-${b.ref}`;
-  // Before any payment is recorded this is a quote / proforma, not a tax invoice (audit P3 #20).
-  const isProforma = b.amountPaid <= 0;
+  // Issued tax invoices carry the frozen gapless serial; an unpaid booking is a
+  // provisional proforma keyed off the booking ref (audit P0 #3).
+  const isProforma = b.amountPaid <= 0 || !b.invoiceNumber;
+  const invoiceNo = b.invoiceNumber ?? `${b.property.invoicePrefix}-${b.ref} (proforma)`;
   const docTitle = isProforma ? "Proforma Invoice / Quote" : "Tax Invoice";
+  // CGST+SGST (same state) vs IGST (inter-state) from the guest's state of residence.
+  const pos = placeOfSupply(b.property.state, guest?.state, b.subtotal, b.taxAmount);
 
   const html = `<!doctype html>
 <html lang="en-IN"><head><meta charset="utf-8"/>
@@ -71,26 +118,27 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       <div class="muted">Billed to</div>
       <div><strong>${esc(guest?.name ?? "Guest")}</strong></div>
       <div class="muted">${esc(guest?.phone ?? "")}${guest?.city ? " · " + esc(guest.city) : ""}</div>
+      ${guest?.state ? `<div class="muted">Place of supply: ${esc(stateName(guest.state))} (${esc(guest.state)})</div>` : ``}
     </div>
     <div style="text-align:right">
       <div class="muted">${esc(docTitle)}</div>
       <div><strong>${esc(invoiceNo)}</strong></div>
-      <div class="muted">${longDate(b.createdAt)}</div>
+      <div class="muted">${longDate(b.invoiceIssuedAt ?? b.createdAt)}</div>
     </div>
   </div>
 
   <table>
     <thead><tr><th>Description</th><th class="amt">Amount</th></tr></thead>
     <tbody>
-      <tr>
-        <td>Room — ${esc(b.rooms[0]?.room.roomType.name ?? "Stay")} · ${nights} night${nights > 1 ? "s" : ""}<br/>
-          <span class="muted">${longDate(b.checkIn)} → ${longDate(b.checkOut)}</span></td>
-        <td class="amt">${inr(b.subtotal)}</td>
-      </tr>
+      ${roomLines(b.rooms, nights, longDate(b.checkIn), longDate(b.checkOut))}
       ${
         hasGst
-          ? `<tr><td>CGST @ ${(GST.lowRate * 50).toFixed(1)}%–9%</td><td class="amt">${inr(halfTax)}</td></tr>
-             <tr><td>SGST</td><td class="amt">${inr(b.taxAmount - halfTax)}</td></tr>`
+          ? pos.lines
+              .map(
+                (l) =>
+                  `<tr><td>${esc(l.label)}</td><td class="amt">${inr(l.amountPaise)}</td></tr>`,
+              )
+              .join("\n")
           : `<tr><td class="muted">GST not applicable</td><td class="amt">${inr(0)}</td></tr>`
       }
     </tbody>

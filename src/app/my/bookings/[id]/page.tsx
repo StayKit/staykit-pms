@@ -36,7 +36,13 @@ export default async function GuestBookingDetail({ params }: { params: Promise<{
   const room = b.rooms[0]?.room;
   const due = b.totalAmount - b.amountPaid;
   const nights = nightsBetween(b.checkIn, b.checkOut);
-  const payLink = b.paymentLinks[0];
+  // Only offer a link that's still live and unexpired — never a dead/superseded one (audit P1 #12).
+  const now = new Date();
+  const payLink = b.paymentLinks.find(
+    (l) =>
+      (l.status === "CREATED" || l.status === "PARTIALLY_PAID") &&
+      (!l.expiresAt || l.expiresAt > now),
+  );
   const onlineEnabled = await onlinePaymentsEnabled();
 
   return (
@@ -172,6 +178,17 @@ export default async function GuestBookingDetail({ params }: { params: Promise<{
                 <b>Total</b> · {inr(b.totalAmount)} ({inr(b.amountPaid)} paid)
               </div>
             </div>
+
+            <a
+              className="btn btn-sm"
+              href={`/bookings/${b.id}/invoice`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ marginTop: 14, width: "100%", justifyContent: "center" }}
+            >
+              <Icon name="external" className="icon-sm" />{" "}
+              {b.amountPaid > 0 ? "Download invoice / receipt" : "Download quote"}
+            </a>
 
             <GuestBookingActions
               bookingId={b.id}

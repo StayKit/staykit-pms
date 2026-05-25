@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { occupancySnapshot, nightlyCleanup, formCReminder, runDailyTasks } from "./tasks";
+import {
+  occupancySnapshot,
+  nightlyCleanup,
+  formCReminder,
+  runDailyTasks,
+  dispatchScheduledReminders,
+  expireStalePaymentLinks,
+} from "./tasks";
 import { createBooking } from "../booking/engine";
-import { parseYmd } from "../dates";
+import { parseYmd, addDays } from "../dates";
 import { prisma } from "@/lib/db";
 import { resetDb, seedBasic, type Fixture } from "../../../test/factories";
 
@@ -148,5 +155,82 @@ describe("runDailyTasks", () => {
     expect(res.occupancy.written).toBe(1);
     expect(res.cleanup).toHaveProperty("otpsPurged");
     expect(res.formC).toHaveProperty("reminded");
+  });
+});
+
+describe("dispatchScheduledReminders (P1 #10)", () => {
+  async function arrivalAutomation(delayMinutes: number) {
+    const tpl = await prisma.notificationTemplate.create({
+      data: {
+        ownerId: fx.owner.id,
+        channel: "SMS",
+        triggerKey: "PRE_ARRIVAL_24H",
+        name: "Day before",
+        body: "Hi {{guest.name}}, see you {{booking.checkIn}}",
+      },
+    });
+    await prisma.notificationAutomation.create({
+      data: {
+        ownerId: fx.owner.id,
+        triggerKey: "PRE_ARRIVAL_24H",
+        templateId: tpl.id,
+        delayMinutes,
+        active: true,
+      },
+    });
+    return tpl;
+  }
+
+  it("queues a reminder 24h before check-in and dedupes on re-run", async () => {
+    const now = new Date();
+    const checkIn = addDays(now, 1); // tomorrow
+    await book({
+      checkIn: checkIn.toISOString().slice(0, 10),
+      checkOut: addDays(checkIn, 1).toISOString().slice(0, 10),
+    });
+    await arrivalAutomation(-1440); // 24h before
+
+    const first = await dispatchScheduledReminders(now);
+    expect(first.queued).toBe(1);
+    const log = await prisma.notificationLog.findFirst({
+      where: { triggerKey: "PRE_ARRIVAL_24H" },
+    });
+    expect(log?.status).toBe("QUEUED");
+
+    // Running again must not duplicate.
+    const second = await dispatchScheduledReminders(now);
+    expect(second.queued).toBe(0);
+  });
+
+  it("does not queue before the reminder window opens", async () => {
+    const now = new Date();
+    const checkIn = addDays(now, 10);
+    await book({
+      checkIn: checkIn.toISOString().slice(0, 10),
+      checkOut: addDays(checkIn, 1).toISOString().slice(0, 10),
+    });
+    await arrivalAutomation(-1440); // due 24h before → not yet
+    const res = await dispatchScheduledReminders(now);
+    expect(res.queued).toBe(0);
+  });
+});
+
+describe("expireStalePaymentLinks (P1 #12)", () => {
+  it("marks past-expiry links EXPIRED", async () => {
+    const b = await book({ checkIn: "2026-06-10", checkOut: "2026-06-11" });
+    await prisma.paymentLink.create({
+      data: {
+        bookingId: b.id,
+        razorpayLinkId: "plink_x",
+        shortUrl: "http://x",
+        amount: 1000_00,
+        status: "CREATED",
+        expiresAt: new Date(Date.now() - 1000),
+      },
+    });
+    const res = await expireStalePaymentLinks(new Date());
+    expect(res.expired).toBe(1);
+    const link = await prisma.paymentLink.findFirst({ where: { bookingId: b.id } });
+    expect(link?.status).toBe("EXPIRED");
   });
 });

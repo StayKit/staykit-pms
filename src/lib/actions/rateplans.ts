@@ -84,6 +84,15 @@ export async function deleteRatePlanAction(id: string): Promise<ActionResult> {
     if (!plan) return fail("Rate plan not found.");
     await assertOwnedProperty(ctx, plan.propertyId, "rates:write");
     await prisma.ratePlan.delete({ where: { id } });
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "RATE_PLAN_DELETED",
+      entityType: "RatePlan",
+      entityId: id,
+      summary: `deleted rate plan ${plan.name}`,
+    });
     revalidatePath(`/properties/${plan.propertyId}/rate-plans`);
     return ok();
   } catch (e) {
@@ -156,6 +165,15 @@ export async function deleteMaintenanceBlockAction(id: string): Promise<ActionRe
     if (!block) return fail("Block not found.");
     await assertOwnedProperty(ctx, block.propertyId, "properties:write");
     await prisma.maintenanceBlock.delete({ where: { id } });
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "ROOM_UNBLOCKED",
+      entityType: "MaintenanceBlock",
+      entityId: id,
+      summary: `removed a maintenance block (${block.reason})`,
+    });
     revalidatePath(`/properties/${block.propertyId}/maintenance`);
     revalidatePath("/calendar");
     return ok();

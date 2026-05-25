@@ -57,6 +57,18 @@ export default async function SettingsAccountPage() {
           phone: owner?.phone ?? "",
         }}
       />
+
+      <div className="card card-padded">
+        <h4 style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 600 }}>Your data</h4>
+        <p className="text-sm text-muted" style={{ margin: "0 0 12px", lineHeight: 1.6 }}>
+          Download a complete copy of your workspace — properties, rooms, rate plans, guests,
+          bookings, payments and message templates — as a single JSON file. A portability right
+          under DPDP, and a handy off-box backup.
+        </p>
+        <a className="btn" href="/api/export" download>
+          <Icon name="external" className="icon-sm" /> Download all my data (JSON)
+        </a>
+      </div>
     </>
   );
 }

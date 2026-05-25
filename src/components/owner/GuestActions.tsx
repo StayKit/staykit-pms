@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { Toast } from "@/components/Toast";
 import {
   toggleMarketingConsentAction,
   eraseGuestAction,
@@ -114,7 +115,7 @@ export function GuestActions({
       >
         <Icon name="trash" className="icon-sm" /> Erase personal data (DPDP)
       </button>
-      {msg && <div className="dev-code">{msg}</div>}
+      {msg && <Toast message={msg} onClose={() => setMsg(null)} />}
     </div>
   );
 }

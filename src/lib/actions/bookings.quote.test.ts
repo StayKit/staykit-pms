@@ -91,6 +91,101 @@ describe("quoteBookingAction", () => {
     expect(q.unavailableRoomIds).not.toContain(room2.id);
   });
 
+  it("returns zero GST and a clear label when the property has no GSTIN", async () => {
+    // fx is seeded with gstin: null in this suite's beforeEach.
+    const q = await quoteBookingAction({
+      propertyId: fx.property.id,
+      roomId: fx.room.id,
+      checkIn: ymd(today()),
+      checkOut: ymd(addDays(today(), 2)),
+    });
+    expect(q.taxRupees).toBe(0);
+    expect(q.totalRupees).toBe(q.subtotalRupees);
+    expect(q.taxLabel).toMatch(/not registered/i);
+  });
+
+  it("charges 5% GST below the threshold for a registered property", async () => {
+    const owner = await prisma.owner.create({
+      data: { name: "G", email: "g@test.in", phone: "+919800012345" },
+    });
+    const property = await prisma.property.create({
+      data: {
+        ownerId: owner.id,
+        name: "GST Homestay",
+        addressLine1: "2 Road",
+        city: "Madikeri",
+        state: "KA",
+        pincode: "571201",
+        gstin: "29ABCDE1234F1Z5",
+      },
+    });
+    const rt = await prisma.roomType.create({
+      data: { propertyId: property.id, name: "Std", baseRate: 6000_00, maxOccupancy: 2 },
+    });
+    const room = await prisma.room.create({
+      data: { propertyId: property.id, roomTypeId: rt.id, name: "R1", number: "1" },
+    });
+    mockCtx.mockResolvedValue({
+      ownerId: owner.id,
+      userId: "u",
+      role: "OWNER",
+      name: "G",
+      propertyScopes: [],
+      demo: true,
+    });
+    const q = await quoteBookingAction({
+      propertyId: property.id,
+      roomId: room.id,
+      checkIn: ymd(today()),
+      checkOut: ymd(addDays(today(), 2)),
+    });
+    expect(q.subtotalRupees).toBe(12000);
+    expect(q.taxRupees).toBe(600); // 5% of 12000
+    expect(q.taxLabel).toBe("GST 5%");
+  });
+
+  it("applies 18% GST above ₹7,500/night for a manual rate", async () => {
+    const owner = await prisma.owner.create({
+      data: { name: "P", email: "p@test.in", phone: "+919800054321" },
+    });
+    const property = await prisma.property.create({
+      data: {
+        ownerId: owner.id,
+        name: "Premium",
+        addressLine1: "3 Road",
+        city: "Madikeri",
+        state: "KA",
+        pincode: "571201",
+        gstin: "29ABCDE1234F1Z5",
+      },
+    });
+    const rt = await prisma.roomType.create({
+      data: { propertyId: property.id, name: "Suite", baseRate: 5000_00, maxOccupancy: 2 },
+    });
+    const room = await prisma.room.create({
+      data: { propertyId: property.id, roomTypeId: rt.id, name: "S1", number: "1" },
+    });
+    mockCtx.mockResolvedValue({
+      ownerId: owner.id,
+      userId: "u",
+      role: "OWNER",
+      name: "P",
+      propertyScopes: [],
+      demo: true,
+    });
+    const q = await quoteBookingAction({
+      propertyId: property.id,
+      roomId: room.id,
+      checkIn: ymd(today()),
+      checkOut: ymd(addDays(today(), 2)),
+      nightlyRateRupees: 9000, // > ₹7,500 → 18%
+    });
+    expect(q.subtotalRupees).toBe(18000);
+    expect(q.taxRupees).toBe(3240); // 18% of 18000
+    expect(q.taxLabel).toBe("GST 18%");
+    expect(q.appliedPlan).toBeNull();
+  });
+
   it("flags a maintenance-blocked room as unavailable", async () => {
     await prisma.maintenanceBlock.create({
       data: {

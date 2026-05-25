@@ -6,6 +6,8 @@ import { requireContext } from "../auth/context";
 import { assertAccess, permissionsForRole, type Role } from "../rbac/policy";
 import { prisma } from "../db";
 import { writeAudit } from "../audit";
+import { APP } from "../config";
+import { providerFor } from "../notify/providers";
 import { type ActionResult, ok, fail, failFrom } from "./result";
 
 const ROLES: Role[] = ["OWNER", "MANAGER", "STAFF"];
@@ -94,9 +96,68 @@ export async function toggleTeamMemberActiveAction(userId: string): Promise<Acti
     const user = await prisma.user.findFirst({ where: { id: userId, ownerId: ctx.ownerId } });
     if (!user) return fail("Team member not found.");
     if (user.id === ctx.userId) return fail("You can't deactivate your own account.");
-    await prisma.user.update({ where: { id: userId }, data: { active: !user.active } });
+    const nextActive = !user.active;
+    await prisma.user.update({ where: { id: userId }, data: { active: nextActive } });
+    // Clean offboard (audit P2 #26): revoke any live sessions so access stops immediately.
+    if (!nextActive) {
+      await prisma.session.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: nextActive ? "TEAM_MEMBER_REACTIVATED" : "TEAM_MEMBER_DEACTIVATED",
+      entityType: "User",
+      entityId: userId,
+      summary: `${nextActive ? "reactivated" : "deactivated"} ${user.name}`,
+    });
     revalidatePath("/settings/team");
-    return ok();
+    return ok(
+      undefined,
+      nextActive ? "Access restored." : "Access revoked and sessions signed out.",
+    );
+  } catch (e) {
+    return failFrom(e);
+  }
+}
+
+/**
+ * Send (or re-send) a sign-in invite to a team member (audit P2 #26). StayKit uses OTP
+ * sign-in, so the invite just tells them they have access and links to /signin, where
+ * they log in with their registered mobile. Best-effort delivery; the link is always
+ * returned so the owner can copy/paste it too.
+ */
+export async function inviteTeamMemberAction(userId: string): Promise<ActionResult> {
+  try {
+    const ctx = await requireContext();
+    assertAccess(ctx, "team:manage");
+    const user = await prisma.user.findFirst({ where: { id: userId, ownerId: ctx.ownerId } });
+    if (!user) return fail("Team member not found.");
+
+    const link = `${APP.baseUrl}/signin`;
+    const body = `You've been added to ${APP.name}. Sign in at ${link} with this mobile number (${user.phone}) to manage bookings.`;
+    // Best-effort: console-logs in dev, real SMS/email when providers are configured.
+    await providerFor("SMS")
+      .send({ channel: "SMS", to: user.phone, body })
+      .catch(() => {});
+    if (user.email) {
+      await providerFor("EMAIL")
+        .send({ channel: "EMAIL", to: user.email, subject: `Your ${APP.name} access`, body })
+        .catch(() => {});
+    }
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "TEAM_MEMBER_INVITED",
+      entityType: "User",
+      entityId: userId,
+      summary: `sent sign-in invite to ${user.name}`,
+    });
+    return ok({ link }, `Invite sent. Sign-in link: ${link}`);
   } catch (e) {
     return failFrom(e);
   }

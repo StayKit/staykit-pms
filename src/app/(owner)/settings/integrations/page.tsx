@@ -45,7 +45,7 @@ export default function SettingsIntegrationsPage() {
     {
       name: "MSG91 (SMS)",
       desc: "Transactional SMS with DLT IDs",
-      connected: !!process.env.MSG91_AUTH_KEY,
+      connected: !!process.env.MSG91_AUTH_KEY && !!process.env.MSG91_SENDER_ID,
       icon: "phone",
       env: ["MSG91_AUTH_KEY", "MSG91_SENDER_ID"],
       note: "Each SMS template also needs a DLT-approved dltTemplateId (set per template under Notifications).",
@@ -54,9 +54,9 @@ export default function SettingsIntegrationsPage() {
     {
       name: "WhatsApp Business",
       desc: "Send confirmations & reminders",
-      connected: !!process.env.MSG91_AUTH_KEY,
+      connected: !!process.env.MSG91_AUTH_KEY && !!process.env.MSG91_WHATSAPP_NUMBER,
       icon: "message-circle",
-      env: ["MSG91_AUTH_KEY"],
+      env: ["MSG91_AUTH_KEY", "MSG91_WHATSAPP_NUMBER"],
       note: "Delivered through MSG91. Each WhatsApp template needs an approved whatsappTemplateName.",
       docs: "https://msg91.com/whatsapp",
     },

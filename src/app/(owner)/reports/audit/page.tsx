@@ -34,6 +34,9 @@ export default async function AuditPage({
           <h2 style={{ fontSize: 22 }}>Audit log</h2>
           <div className="sub">Every state change, attributed to a person, the system, or AI.</div>
         </div>
+        <a className="btn" href="/api/reports/audit.csv">
+          <Icon name="external" className="icon-sm" /> Export CSV
+        </a>
       </div>
 
       <div className="chips" style={{ marginBottom: 14 }}>
