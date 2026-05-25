@@ -2555,3 +2555,21 @@
   max-height: 480px;
   padding: 0 56px 24px 0;
 }
+
+/* ── Reset structural properties that globals.css injects into class names
+      the landing happens to share (.section-head, .avatar, .chip, .pill).
+      The design assumed a clean slate; these re-assert it. Without this,
+      e.g. globals' `.section-head { display:flex; justify-content:space-between }`
+      spreads every section's eyebrow / heading / lede across a row. ── */
+.lp .section-head {
+  display: block;
+}
+.lp .claude-bubble .head .avatar {
+  flex: 0 0 auto;
+}
+.lp .footer-bottom .chip {
+  display: inline-block;
+}
+.lp .msg-line .pill {
+  display: inline-block;
+}

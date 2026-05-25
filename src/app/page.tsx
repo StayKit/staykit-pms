@@ -574,7 +574,7 @@ export default function LandingPage() {
               <span className="dot" />
               The 3-second proof
             </div>
-            <h2 className="head" style={{ marginTop: 14 }}>
+            <h2 className="h3" style={{ marginTop: 14 }}>
               One screen. Every booking. Every property.
             </h2>
             <p className="sub">
