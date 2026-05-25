@@ -34,6 +34,8 @@ export function BookingsFilters() {
       if (v) params.set(key, v);
       else params.delete(key);
     }
+    // Any filter/search change invalidates the current page offset.
+    params.delete("page");
     router.push("/bookings?" + params.toString());
   }
 

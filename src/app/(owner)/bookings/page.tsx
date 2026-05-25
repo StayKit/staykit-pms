@@ -1,17 +1,17 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
-import { today, addDays, shortDate, nightsBetween, parseYmd } from "@/lib/dates";
+import { today, shortDate, nightsBetween } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { Icon } from "@/components/Icon";
 import { Avatar, ChannelChip, StatusPill, deriveState } from "@/components/ui";
 import { BookingsFilters } from "@/components/owner/BookingsFilters";
+import { Pagination } from "@/components/owner/Pagination";
+import { queryBookingIds, SORT_KEYS, type SortKey } from "@/lib/booking/list";
 
 export const dynamic = "force-dynamic";
 
-type SortKey = "guest" | "checkIn" | "room" | "status" | "total";
-const SORT_KEYS: SortKey[] = ["guest", "checkIn", "room", "status", "total"];
+const PAGE_SIZE = 25;
 
 export default async function BookingsPage({
   searchParams,
@@ -23,6 +23,7 @@ export default async function BookingsPage({
     to?: string;
     sort?: string;
     dir?: string;
+    page?: string;
   }>;
 }) {
   const ctx = (await getAppContext())!;
@@ -30,68 +31,34 @@ export default async function BookingsPage({
   const { filter = "all", q, from, to } = sp;
   const sort = (SORT_KEYS as string[]).includes(sp.sort ?? "") ? (sp.sort as SortKey) : "checkIn";
   const dir: "asc" | "desc" = sp.dir === "desc" ? "desc" : "asc";
-  const t0 = today();
-  const t1 = addDays(t0, 1);
+  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
 
-  const where: Prisma.BookingWhereInput = {
-    property: { ownerId: ctx.ownerId },
-    status: { notIn: ["CANCELLED"] },
-  };
-  if (filter === "today") where.checkIn = { gte: t0, lt: t1 };
-  if (filter === "tentative") where.status = "TENTATIVE";
-  if (filter === "checkedin") where.status = "CHECKED_IN";
-  if (filter === "foreign") where.guests = { some: { guest: { isForeign: true } } };
-  if (filter === "cancelreq") where.cancelRequestedAt = { not: null };
-  // Explicit check-in date range (audit P1 #7) takes precedence over the "today" preset.
-  if (from || to) {
-    where.checkIn = {
-      ...(from ? { gte: parseYmd(from) } : {}),
-      ...(to ? { lt: addDays(parseYmd(to), 1) } : {}),
-    };
-  }
-  if (q) {
-    where.OR = [
-      { ref: { contains: q } },
-      { guests: { some: { guest: { name: { contains: q } } } } },
-      { guests: { some: { guest: { phone: { contains: q } } } } },
-    ];
-  }
+  // Filtering, sorting, and pagination all run in SQL (see lib/booking/list) so a
+  // low-spec browser only ever receives one page of rows.
+  const { ids, total } = await queryBookingIds({
+    ownerId: ctx.ownerId,
+    filter,
+    q,
+    from,
+    to,
+    sort,
+    dir,
+    page,
+    pageSize: PAGE_SIZE,
+    today: today(),
+  });
 
-  let bookings = await prisma.booking.findMany({
-    where,
-    orderBy: { checkIn: "asc" },
+  const hydrated = await prisma.booking.findMany({
+    where: { id: { in: ids } },
     include: {
       guests: { where: { isPrimary: true }, include: { guest: true } },
       rooms: { include: { room: true } },
       channel: true,
     },
   });
-  if (filter === "unpaid") bookings = bookings.filter((b) => b.amountPaid < b.totalAmount);
-
-  const STATUS_ORDER = ["TENTATIVE", "CONFIRMED", "CHECKED_IN", "CHECKED_OUT", "NO_SHOW"];
-  const sortValue = (b: (typeof bookings)[number]): string | number => {
-    switch (sort) {
-      case "guest":
-        return (b.guests[0]?.guest.name ?? "").toLowerCase();
-      case "room":
-        return b.rooms[0]?.room.number ?? b.rooms[0]?.room.name ?? "";
-      case "status":
-        return STATUS_ORDER.indexOf(b.status);
-      case "total":
-        return b.totalAmount;
-      default:
-        return b.checkIn.getTime();
-    }
-  };
-  bookings.sort((a, b) => {
-    const av = sortValue(a);
-    const bv = sortValue(b);
-    const cmp =
-      typeof av === "number" && typeof bv === "number"
-        ? av - bv
-        : String(av).localeCompare(String(bv));
-    return dir === "asc" ? cmp : -cmp;
-  });
+  // findMany ignores `in` ordering, so restore the SQL-computed page order.
+  const byId = new Map(hydrated.map((b) => [b.id, b]));
+  const bookings = ids.map((id) => byId.get(id)!).filter(Boolean);
 
   const sortHref = (col: SortKey): string => {
     const params = new URLSearchParams();
@@ -100,16 +67,12 @@ export default async function BookingsPage({
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     params.set("sort", col);
-    // Toggle direction when re-clicking the active column.
+    // Toggle direction when re-clicking the active column; sort change resets to page 1.
     params.set("dir", sort === col && dir === "asc" ? "desc" : "asc");
     return "/bookings?" + params.toString();
   };
   const arrow = (col: SortKey) =>
     sort === col ? (dir === "asc" ? "chevron-up" : "chevron-down") : "chevron-down";
-
-  const total = await prisma.booking.count({
-    where: { property: { ownerId: ctx.ownerId }, status: { notIn: ["CANCELLED"] } },
-  });
 
   return (
     <div className="page" style={{ paddingTop: 16 }}>
@@ -285,6 +248,13 @@ export default async function BookingsPage({
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          basePath="/bookings"
+          params={{ filter: filter === "all" ? undefined : filter, q, from, to, sort, dir }}
+        />
       </div>
     </div>
   );

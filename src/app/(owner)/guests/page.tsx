@@ -1,34 +1,46 @@
 import Link from "next/link";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
 import { Icon } from "@/components/Icon";
 import { Avatar } from "@/components/ui";
+import { Pagination } from "@/components/owner/Pagination";
 
 export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 25;
 
 export default async function GuestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const ctx = (await getAppContext())!;
-  const { q } = await searchParams;
+  const { q, page: pageParam } = await searchParams;
+  const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
 
-  const guests = await prisma.guest.findMany({
-    where: {
-      ownerId: ctx.ownerId,
-      ...(q ? { OR: [{ name: { contains: q } }, { phone: { contains: q } }] } : {}),
-    },
-    orderBy: { name: "asc" },
-    include: { _count: { select: { bookings: true } } },
-  });
+  // Search filters at the DB; take/skip keeps a low-spec browser to one page of rows.
+  const where: Prisma.GuestWhereInput = {
+    ownerId: ctx.ownerId,
+    ...(q ? { OR: [{ name: { contains: q } }, { phone: { contains: q } }] } : {}),
+  };
+  const [guests, total] = await Promise.all([
+    prisma.guest.findMany({
+      where,
+      orderBy: { name: "asc" },
+      include: { _count: { select: { bookings: true } } },
+      take: PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
+    }),
+    prisma.guest.count({ where }),
+  ]);
 
   return (
     <div className="page" style={{ paddingTop: 16 }}>
       <div className="section-head" style={{ marginTop: 0 }}>
         <div>
           <h2 style={{ fontSize: 22 }}>Guests</h2>
-          <div className="sub">{guests.length} guests in your address book</div>
+          <div className="sub">{total.toLocaleString("en-IN")} guests in your address book</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <a className="btn" href="/api/reports/guests.csv">
@@ -129,6 +141,13 @@ export default async function GuestsPage({
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          basePath="/guests"
+          params={{ q }}
+        />
       </div>
     </div>
   );
