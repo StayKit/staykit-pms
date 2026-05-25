@@ -12,6 +12,8 @@ import {
   sendBookingNotificationAction,
   createTemplateAction,
   deleteTemplateAction,
+  saveTemplateGroupAction,
+  deleteTemplateGroupAction,
   resendNotificationAction,
 } from "./notifications";
 import { DEFAULT_TEMPLATES } from "../notify/defaults";
@@ -139,6 +141,81 @@ describe("template CRUD", () => {
     const del = await deleteTemplateAction(id);
     expect(del.ok).toBe(true);
     expect(await prisma.notificationTemplate.findUnique({ where: { id } })).toBeNull();
+  });
+});
+
+describe("saveTemplateGroupAction", () => {
+  it("upserts each channel and names them by the trigger", async () => {
+    const res = await saveTemplateGroupAction({
+      triggerKey: "BOOKING_CONFIRMED",
+      channels: [
+        { channel: "SMS", active: true, body: "Hi {{guest.name}}, confirmed." },
+        {
+          channel: "EMAIL",
+          active: true,
+          subject: "Confirmed",
+          body: "Dear {{guest.name}}, confirmed.",
+        },
+        { channel: "WHATSAPP", active: false, body: "" },
+      ],
+    });
+    expect(res.ok).toBe(true);
+    const rows = await prisma.notificationTemplate.findMany({
+      where: { ownerId: fx.owner.id, triggerKey: "BOOKING_CONFIRMED" },
+    });
+    expect(rows).toHaveLength(2); // WhatsApp left blank → not created
+    expect(rows.every((r) => r.name === "Booking confirmed")).toBe(true);
+    const email = rows.find((r) => r.channel === "EMAIL");
+    expect(email?.subject).toBe("Confirmed");
+  });
+
+  it("keeps content but flips active when a channel is turned off, and removes a blanked channel", async () => {
+    await saveTemplateGroupAction({
+      triggerKey: "PAYMENT_RECEIVED",
+      channels: [
+        { channel: "SMS", active: true, body: "Got it {{guest.name}}" },
+        { channel: "EMAIL", active: true, body: "Thanks {{guest.name}}" },
+      ],
+    });
+    // Turn SMS off (keep body), blank out EMAIL (remove it).
+    await saveTemplateGroupAction({
+      triggerKey: "PAYMENT_RECEIVED",
+      channels: [
+        { channel: "SMS", active: false, body: "Got it {{guest.name}}" },
+        { channel: "EMAIL", active: false, body: "" },
+      ],
+    });
+    const rows = await prisma.notificationTemplate.findMany({
+      where: { ownerId: fx.owner.id, triggerKey: "PAYMENT_RECEIVED" },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].channel).toBe("SMS");
+    expect(rows[0].active).toBe(false);
+  });
+
+  it("refuses to switch a channel on without a message", async () => {
+    const res = await saveTemplateGroupAction({
+      triggerKey: "CANCELLED",
+      channels: [{ channel: "SMS", active: true, body: "   " }],
+    });
+    expect(res.ok).toBe(false);
+    expect(res.message).toMatch(/turn it off/i);
+  });
+});
+
+describe("deleteTemplateGroupAction", () => {
+  it("deletes every channel for one event", async () => {
+    await seedDefaultTemplatesAction();
+    const before = await prisma.notificationTemplate.count({
+      where: { ownerId: fx.owner.id, triggerKey: "BOOKING_CONFIRMED" },
+    });
+    expect(before).toBeGreaterThan(0);
+    const res = await deleteTemplateGroupAction("BOOKING_CONFIRMED");
+    expect(res.ok).toBe(true);
+    const after = await prisma.notificationTemplate.count({
+      where: { ownerId: fx.owner.id, triggerKey: "BOOKING_CONFIRMED" },
+    });
+    expect(after).toBe(0);
   });
 });
 

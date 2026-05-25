@@ -8,6 +8,7 @@ import { assertAccess } from "../rbac/policy";
 import { prisma } from "../db";
 import { sendNow } from "../notify/dispatch";
 import { DEFAULT_TEMPLATES } from "../notify/defaults";
+import { CHANNEL_LABEL, TRIGGER_LABEL } from "../notify/triggers";
 import { type ActionResult, ok, fail, failFrom } from "./result";
 
 const templateSchema = z.object({
@@ -151,6 +152,115 @@ export async function updateTemplateAction(
     return ok(undefined, "Template saved.");
   } catch (e) {
     return failFrom(e);
+  }
+}
+
+const groupChannelSchema = z.object({
+  channel: z.enum(["SMS", "EMAIL", "WHATSAPP"]),
+  active: z.boolean(),
+  subject: z.string().optional().default(""),
+  body: z.string().optional().default(""),
+  dltTemplateId: z.string().optional().default(""),
+  whatsappTemplateName: z.string().optional().default(""),
+});
+
+const templateGroupSchema = z.object({
+  triggerKey: z.string().min(1, "Pick an event"),
+  channels: z.array(groupChannelSchema),
+});
+
+/**
+ * Save a whole event's templates in one go — one section per channel (SMS/Email/WhatsApp),
+ * each with its own On/Off toggle. A channel with a non-empty body is upserted (and its
+ * `active` flag set from the toggle); a channel left blank is removed. This backs the grouped
+ * /notifications editor so an owner edits "Booking confirmed" once across all three channels.
+ */
+export async function saveTemplateGroupAction(
+  input: z.input<typeof templateGroupSchema>,
+): Promise<ActionResult> {
+  try {
+    const data = templateGroupSchema.parse(input);
+    const ctx = await requireContext();
+    assertAccess(ctx, "notifications:send");
+
+    // A channel can't be switched on without a message to send.
+    for (const c of data.channels) {
+      if (c.active && !c.body.trim()) {
+        return fail(`Add a message for ${CHANNEL_LABEL[c.channel]} or turn it off.`);
+      }
+    }
+
+    const name = TRIGGER_LABEL[data.triggerKey] ?? data.triggerKey;
+    let saved = 0;
+    let removed = 0;
+
+    await prisma.$transaction(async (tx) => {
+      for (const c of data.channels) {
+        const channel = c.channel as NotificationChannel;
+        const where = {
+          ownerId_channel_triggerKey: {
+            ownerId: ctx.ownerId,
+            channel,
+            triggerKey: data.triggerKey,
+          },
+        };
+        if (!c.body.trim()) {
+          const existing = await tx.notificationTemplate.findUnique({ where });
+          if (existing) {
+            await tx.notificationTemplate.delete({ where });
+            removed += 1;
+          }
+          continue;
+        }
+        await tx.notificationTemplate.upsert({
+          where,
+          create: {
+            ownerId: ctx.ownerId,
+            channel,
+            triggerKey: data.triggerKey,
+            name,
+            subject: c.channel === "EMAIL" ? c.subject || null : null,
+            body: c.body,
+            dltTemplateId: c.channel === "SMS" ? c.dltTemplateId || null : null,
+            whatsappTemplateName: c.channel === "WHATSAPP" ? c.whatsappTemplateName || null : null,
+            active: c.active,
+          },
+          update: {
+            subject: c.channel === "EMAIL" ? c.subject || null : null,
+            body: c.body,
+            dltTemplateId: c.channel === "SMS" ? c.dltTemplateId || null : null,
+            whatsappTemplateName: c.channel === "WHATSAPP" ? c.whatsappTemplateName || null : null,
+            active: c.active,
+          },
+        });
+        saved += 1;
+      }
+    });
+
+    revalidatePath("/notifications");
+    revalidatePath("/settings/notifications");
+    if (saved === 0 && removed === 0) return fail("Add a message for at least one channel.");
+    return ok({ saved, removed }, "Saved.");
+  } catch (e) {
+    if (e instanceof z.ZodError) return fail(e.errors[0].message);
+    return failFrom(e, "Could not save the templates.");
+  }
+}
+
+/** Delete every channel's template for one event (the trash action on a grouped row). */
+export async function deleteTemplateGroupAction(triggerKey: string): Promise<ActionResult> {
+  try {
+    const ctx = await requireContext();
+    assertAccess(ctx, "notifications:send");
+    const res = await prisma.notificationTemplate.deleteMany({
+      where: { ownerId: ctx.ownerId, triggerKey },
+    });
+    if (res.count === 0) return fail("Nothing to delete.");
+    revalidatePath("/notifications");
+    revalidatePath("/settings/notifications");
+    return ok(undefined, "Event templates deleted.");
+  } catch (e) {
+    return failFrom(e, "Could not delete the templates.");
   }
 }
 

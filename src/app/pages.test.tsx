@@ -310,7 +310,7 @@ describe("owner pages", () => {
       ),
     ).toContain("Sameer");
     expect(await renderRSC((await load("./(owner)/notifications/page")).default())).toContain(
-      "Templates",
+      "Message templates",
     );
     expect(
       await renderRSC(
