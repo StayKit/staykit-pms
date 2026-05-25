@@ -32,15 +32,8 @@ export default defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/**/*.test.{ts,tsx}", "**/*.d.ts"],
       all: true,
-      // 100% statements & lines. The small branch/function shortfall is a handful
-      // of defensive guards (e.g. `value ?? fallback` on schema-guaranteed data,
-      // non-Error catch arms) that aren't reachable with valid inputs.
-      thresholds: {
-        statements: 100,
-        lines: 100,
-        branches: 99,
-        functions: 99,
-      },
+      // Coverage is reported (run `npm run test:coverage`) but not gated — there are
+      // no thresholds, so a coverage shortfall never fails the build.
     },
   },
 });

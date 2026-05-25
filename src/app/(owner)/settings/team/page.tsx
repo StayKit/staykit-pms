@@ -5,7 +5,7 @@ import type { Role } from "@/lib/rbac/policy";
 
 export const dynamic = "force-dynamic";
 
-export default async function TeamPage() {
+export default async function SettingsTeamPage() {
   const ctx = (await getAppContext())!;
   const [users, properties] = await Promise.all([
     prisma.user.findMany({
@@ -17,11 +17,11 @@ export default async function TeamPage() {
   ]);
 
   return (
-    <div className="page" style={{ paddingTop: 16 }}>
-      <div className="section-head" style={{ marginTop: 0 }}>
-        <div>
-          <h2 style={{ fontSize: 22 }}>Team</h2>
-          <div className="sub">Owners, managers and front-desk staff. Login is by mobile OTP.</div>
+    <>
+      <div>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Team &amp; roles</h3>
+        <div className="sub">
+          Owners, managers and front-desk staff. Login is by mobile OTP — no passwords to manage.
         </div>
       </div>
       <TeamManager
@@ -36,6 +36,6 @@ export default async function TeamPage() {
         }))}
         properties={properties.map((p) => ({ id: p.id, name: p.name }))}
       />
-    </div>
+    </>
   );
 }

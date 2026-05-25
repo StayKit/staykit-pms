@@ -1233,3 +1233,21 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .error-text { color: var(--st-unpaid); font-size: 12.5px; }
 .empty { padding: 48px; text-align: center; color: var(--muted); }
+
+/* ════════════════════════════════════════════════════════════════════
+   Settings — integration disclosure rows
+   ════════════════════════════════════════════════════════════════════ */
+.integration { border-bottom: 1px solid var(--line); }
+.integration:last-child { border-bottom: 0; }
+.integration > summary {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+  cursor: pointer; list-style: none;
+}
+.integration > summary::-webkit-details-marker { display: none; }
+.integration > summary::marker { content: ""; }
+.integration > summary:hover { background: var(--surface-2); }
+.integration .integration-toggle { margin-left: 0; }
+.integration[open] .integration-toggle { background: var(--surface-2); }
+.integration-body {
+  padding: 0 16px 16px 68px; font-size: 13px;
+}

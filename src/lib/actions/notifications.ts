@@ -38,6 +38,7 @@ export async function seedDefaultTemplatesAction(): Promise<ActionResult> {
       created += 1;
     }
     revalidatePath("/notifications");
+    revalidatePath("/settings/notifications");
     revalidatePath("/onboarding");
     return ok({ created }, created ? `Added ${created} templates.` : "Templates already set up.");
   } catch (e) {
@@ -53,6 +54,7 @@ export async function toggleTemplateAction(id: string): Promise<ActionResult> {
     if (!t) return fail("Template not found.");
     await prisma.notificationTemplate.update({ where: { id }, data: { active: !t.active } });
     revalidatePath("/notifications");
+    revalidatePath("/settings/notifications");
     return ok();
   } catch (e) {
     return failFrom(e);

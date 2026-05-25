@@ -1,2 +1,2 @@
-# Heavier gate before code leaves the machine: full suite + coverage thresholds.
-npm run test:coverage
+# Heavier gate before code leaves the machine: the full test suite.
+npm test

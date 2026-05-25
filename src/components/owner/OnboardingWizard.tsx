@@ -151,7 +151,7 @@ export function OnboardingWizard({ state }: Readonly<{ state: OnboardingState }>
           {state.razorpayConfigured ? (
             <span className="pill pill-brand">Razorpay connected</span>
           ) : (
-            <Link className="btn btn-sm" href="/settings">
+            <Link className="btn btn-sm" href="/settings/integrations">
               Add Razorpay keys
             </Link>
           )}

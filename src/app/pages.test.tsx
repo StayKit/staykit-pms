@@ -314,9 +314,9 @@ describe("owner pages", () => {
     expect(await renderRSC((await load("./(owner)/assistant/page")).default())).toContain(
       "MCP for Claude.ai",
     );
-    expect(await renderRSC((await load("./(owner)/settings/page")).default())).toContain(
-      "Integrations",
-    );
+    expect(
+      await renderRSC((await load("./(owner)/settings/integrations/page")).default()),
+    ).toContain("Integrations");
   });
 
   it("assistant shows the disconnected state when no token is issued", async () => {
@@ -329,7 +329,7 @@ describe("owner pages", () => {
 
   it("settings marks an integration connected when its key is present", async () => {
     vi.stubEnv("RESEND_API_KEY", "re_test");
-    const html = await renderRSC((await load("./(owner)/settings/page")).default());
+    const html = await renderRSC((await load("./(owner)/settings/integrations/page")).default());
     expect(html).toContain("Connected");
     vi.unstubAllEnvs();
   });
@@ -353,6 +353,95 @@ describe("owner layout", () => {
     await prisma.property.updateMany({ data: { active: false } });
     const { default: Layout } = await load("./(owner)/layout");
     await expect(renderRSC(Layout({ children: "X" }))).rejects.toThrow("REDIRECT:/signin");
+  });
+});
+
+describe("settings section", () => {
+  it("/settings redirects to the property section", async () => {
+    const { default: Page } = await load("./(owner)/settings/page");
+    expect(() => Page()).toThrow("REDIRECT:/settings/property");
+  });
+
+  it("settings layout renders its header and sub-nav around children", async () => {
+    const { default: Layout } = await load("./(owner)/settings/layout");
+    const html = await renderRSC(Layout({ children: "SECTION" }));
+    expect(html).toContain("SECTION");
+    expect(html).toContain("Team &amp; roles");
+    expect(html).toContain("Legal &amp; DPDP");
+  });
+
+  it("property section shows a switcher when more than one property exists", async () => {
+    await prisma.property.create({
+      data: {
+        ownerId: fx.owner.id,
+        name: "Second Stay",
+        addressLine1: "2 Hill Road",
+        city: "Mysore",
+        state: "KA",
+        pincode: "570001",
+      },
+    });
+    const { default: Page } = await load("./(owner)/settings/property/page");
+    const html = await renderRSC(Page({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain("Second Stay");
+    // A selected property id is honoured.
+    const picked = await prisma.property.findFirst({ where: { name: "Second Stay" } });
+    const html2 = await renderRSC(
+      Page({ searchParams: Promise.resolve({ property: picked!.id }) }),
+    );
+    expect(html2).toContain("Second Stay");
+  });
+
+  it("integrations setup details list the env vars and respect live mode", async () => {
+    vi.stubEnv("RAZORPAY_MODE", "live");
+    const html = await renderRSC((await load("./(owner)/settings/integrations/page")).default());
+    expect(html).toContain("RAZORPAY_KEY_ID_LIVE");
+    expect(html).toContain("Needs setup");
+    vi.unstubAllEnvs();
+  });
+
+  it("team section renders the team manager", async () => {
+    const html = await renderRSC((await load("./(owner)/settings/team/page")).default());
+    expect(html).toContain("Add a team member");
+  });
+
+  it("notifications section lists channels and the per-template toggles", async () => {
+    const html = await renderRSC((await load("./(owner)/settings/notifications/page")).default());
+    expect(html).toContain("Channels");
+    expect(html).toContain("Automated messages");
+    expect(html).toContain("Turn off"); // seeded templates are active
+  });
+
+  it("notifications section offers to seed defaults when empty", async () => {
+    await prisma.notificationTemplate.deleteMany({ where: { ownerId: fx.owner.id } });
+    const html = await renderRSC((await load("./(owner)/settings/notifications/page")).default());
+    expect(html).toContain("Seed default templates");
+  });
+
+  it("legal section shows retention windows and ID-document stats", async () => {
+    const html = await renderRSC((await load("./(owner)/settings/legal/page")).default());
+    expect(html).toContain("Legal &amp; DPDP");
+    expect(html).toContain("90 days"); // guest-ID purge window
+    expect(html).toContain("Form C");
+  });
+
+  it("account section renders the editable profile for an owner", async () => {
+    const html = await renderRSC((await load("./(owner)/settings/account/page")).default());
+    expect(html).toContain("Save changes");
+    expect(html).not.toContain("Only the workspace owner can edit");
+  });
+
+  it("account section locks the form for a non-owner", async () => {
+    ctxMock.mockResolvedValue({
+      ownerId: fx.owner.id,
+      userId: fx.user.id,
+      role: "STAFF",
+      name: "Front Desk",
+      propertyScopes: [],
+      demo: false,
+    });
+    const html = await renderRSC((await load("./(owner)/settings/account/page")).default());
+    expect(html).toContain("Only the workspace owner can edit");
   });
 });
 
@@ -574,10 +663,14 @@ describe("page edge-case branches", () => {
     expect(html).toContain("No bookings in range");
   });
 
-  it("settings shows 'Not registered' when the property has no GSTIN", async () => {
-    await prisma.property.updateMany({ where: { ownerId: fx.owner.id }, data: { gstin: null } });
-    const html = await renderRSC((await load("./(owner)/settings/page")).default());
-    expect(html).toContain("Not registered");
+  it("settings property page renders the editable property form", async () => {
+    const html = await renderRSC(
+      (await load("./(owner)/settings/property/page")).default({
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    expect(html).toContain("GSTIN");
+    expect(html).toContain("Save changes");
   });
 
   it("assistant shows a dash for a token never used and 'just now' for fresh actions", async () => {

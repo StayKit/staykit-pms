@@ -60,7 +60,7 @@ export async function createTeamMemberAction(
       entityId: user.id,
       summary: `added ${data.name} as ${data.role}`,
     });
-    revalidatePath("/team");
+    revalidatePath("/settings/team");
     return ok({ id: user.id });
   } catch (e) {
     if (e instanceof z.ZodError) return fail(e.errors[0].message);
@@ -80,7 +80,7 @@ export async function updateTeamMemberAction(
     if (!user) return fail("Team member not found.");
     await prisma.user.update({ where: { id: userId }, data: { role: input.role } });
     await syncScopes(userId, input.role, input.propertyIds, ctx.ownerId);
-    revalidatePath("/team");
+    revalidatePath("/settings/team");
     return ok();
   } catch (e) {
     return failFrom(e);
@@ -95,7 +95,7 @@ export async function toggleTeamMemberActiveAction(userId: string): Promise<Acti
     if (!user) return fail("Team member not found.");
     if (user.id === ctx.userId) return fail("You can't deactivate your own account.");
     await prisma.user.update({ where: { id: userId }, data: { active: !user.active } });
-    revalidatePath("/team");
+    revalidatePath("/settings/team");
     return ok();
   } catch (e) {
     return failFrom(e);
