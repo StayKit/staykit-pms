@@ -79,6 +79,25 @@ export const RETENTION = {
   incomeTaxYears: 8,
 } as const;
 
+/**
+ * Normalize the configured base URL so OAuth/MCP metadata always advertises https
+ * for a real host. Claude.ai's remote MCP connector refuses non-HTTPS endpoints,
+ * so an `http://` value behind a TLS-terminating proxy would break the connection.
+ * localhost/127.0.0.1/::1 stay on http for local dev. Trailing slash is stripped so
+ * `${baseUrl}/mcp` stays clean.
+ */
+export function normalizeBaseUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    const isLocal =
+      u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "[::1]";
+    if (!isLocal && u.protocol === "http:") u.protocol = "https:";
+    return u.toString().replace(/\/$/, "");
+  } catch {
+    return raw;
+  }
+}
+
 export const APP = {
   name: "StayKit",
   tagline: "Run your homestay, not a spreadsheet.",
@@ -86,7 +105,7 @@ export const APP = {
   timezone: "Asia/Kolkata",
   defaultLocale: "en-IN",
   /** Public base URL — used for payment callbacks and MCP resource indicators. */
-  baseUrl: process.env.APP_BASE_URL || "http://localhost:3000",
+  baseUrl: normalizeBaseUrl(process.env.APP_BASE_URL || "http://localhost:3000"),
 } as const;
 
 export const FRRO_FORM_C_URL = "https://indianfrro.gov.in/sform";
