@@ -8,14 +8,22 @@
  * for tools/list + tools/call conformance.
  */
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { APP } from "@/lib/config";
 import { prisma } from "@/lib/db";
 import { TOOLS, getTool, ScopeError, type McpContext } from "@/lib/mcp/tools";
 import { listResources, readResource, RESOURCE_TEMPLATES } from "@/lib/mcp/resources";
 import { PROMPTS, getPrompt } from "@/lib/mcp/prompts";
 import { resolveMcpContext } from "@/lib/mcp/auth";
+import { enforceRateLimit, RateLimitError } from "@/lib/mcp/ratelimit";
 
 export const dynamic = "force-dynamic";
+
+/** Per-token key for rate limiting: hash of the bearer (shared "dev" bucket when none). */
+function tokenKey(req: Request): string {
+  const auth = req.headers.get("authorization") ?? "dev-fallback";
+  return createHash("sha256").update(auth).digest("hex");
+}
 
 const PROTOCOL_VERSION = "2025-11-25";
 
@@ -95,6 +103,7 @@ export async function POST(req: Request) {
 
     const started = Date.now();
     try {
+      enforceRateLimit(tokenKey(req), name);
       const parsed = tool.inputSchema.parse(args);
       const result = await tool.run(parsed as Record<string, unknown>, ctx);
       await audit(ctx, name, args, "OK", Date.now() - started);
@@ -103,9 +112,10 @@ export async function POST(req: Request) {
         structuredContent: result,
       });
     } catch (e) {
-      const status = e instanceof ScopeError ? "DENIED" : "ERROR";
+      const status =
+        e instanceof RateLimitError ? "LIMITED" : e instanceof ScopeError ? "DENIED" : "ERROR";
       await audit(ctx, name, args, status, Date.now() - started);
-      // Tool/scope errors are always Error instances (zod, ScopeError, domain errors).
+      // Tool/scope/rate errors are always Error instances (zod, ScopeError, domain errors).
       const message = (e as Error).message;
       // Tool errors are returned as result content with isError per MCP convention.
       return rpcResult(body.id, { content: [{ type: "text", text: message }], isError: true });
@@ -122,6 +132,7 @@ export async function POST(req: Request) {
   if (body.method === "resources/read") {
     const uri = String(body.params?.uri ?? "");
     try {
+      enforceRateLimit(tokenKey(req), "resources/read");
       const contents = await readResource(uri, ctx);
       return rpcResult(body.id, { contents: [contents] });
     } catch (e) {

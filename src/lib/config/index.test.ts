@@ -43,18 +43,28 @@ describe("OTP policy (B.5)", () => {
 });
 
 describe("MCP scopes (B.9)", () => {
-  it("advertises the spec's scope set", () => {
+  it("advertises the operational scope set (fine-tuning scopes are excluded — UI-only)", () => {
     expect(MCP.scopes).toEqual([
       "bookings:read",
       "bookings:write",
       "bookings:cancel",
       "payments:read",
+      "payments:write",
       "payments:refund",
       "properties:read",
       "properties:write",
-      "reports:read",
+      "guests:read",
+      "guests:write",
+      "notifications:read",
       "notifications:send",
+      "compliance:read",
+      "compliance:write",
+      "reports:read",
     ]);
+    // Fine-tuning permissions must NOT be grantable to an MCP token.
+    expect(MCP.scopes).not.toContain("rates:write");
+    expect(MCP.scopes).not.toContain("team:manage");
+    expect(MCP.scopes).not.toContain("mcp:admin");
     expect(MCP.accessTokenTtlMinutes).toBe(15);
     expect(MCP.refreshTokenTtlDays).toBe(30);
     expect(MCP.sendNotificationPerHour).toBe(10);

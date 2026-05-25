@@ -84,10 +84,15 @@ The Streamable HTTP endpoint lives at **`/mcp`**. Discovery metadata is publishe
 
 In Claude.ai → **Customize → Connectors → Add custom connector** → paste `https://<your-host>/mcp`.
 
-Tools (RBAC-enforced, scopes map 1:1 to permissions): `list_properties`, `get_property`,
-`list_rooms`, `check_availability`, `list_bookings`, `get_booking`, `get_kpis`, `search_guests`,
-`create_booking`, `cancel_booking`, `check_in`, `check_out`, `get_payment_status`,
-`create_payment_link`, `initiate_refund` (human-in-the-loop). See [docs/mcp.md](docs/mcp.md).
+**36 tools, RBAC-enforced** (scopes map 1:1 to permissions), plus read-only resources and reusable
+prompts. The surface is deliberately **operational**: AI takes/moves/cancels bookings, records cash
+payments, manages guests, files Form C, sets housekeeping status, sends messages, and reads reports —
+while **fine-tuning stays in the portal** (rate-plan pricing, room/property/channel setup, team). AI
+can read those for context but not change them by chat.
+
+Safety: OAuth 2.1 + PKCE, per-token rate limits, property-level scoping for staff/managers,
+human-in-the-loop confirmation on refunds / cancellations / guest erasure, and a full audit trail. See
+[docs/mcp.md](docs/mcp.md).
 
 ## Scripts
 

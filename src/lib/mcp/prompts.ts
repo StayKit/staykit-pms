@@ -47,15 +47,16 @@ export function getPrompt(name: string, args: Record<string, unknown> = {}) {
     case "daily_briefing":
       return userText(
         "Using the StayKit tools, give me today's briefing across all my properties: " +
-          "today's arrivals and departures, who hasn't paid yet, and anything that needs attention " +
-          "(foreign-national Form C reminders, partial payments). Call list_bookings and get_kpis as needed.",
+          "today's arrivals and departures (list_bookings), who still owes money (the amountPaid vs " +
+          "totalAmount on each booking), foreign-national guests who still need FRRO Form C filed " +
+          "(list_form_c_pending), and the headline occupancy (get_kpis). Flag anything that needs action.",
       );
     case "revenue_report": {
       const from = String(args.from ?? "");
       const to = String(args.to ?? "");
       return userText(
         `Produce a revenue report from ${from} to ${to}. Call get_kpis for occupancy, ADR and ` +
-          `RevPAR, and list_bookings to break revenue down by source channel. Present it as a short table.`,
+          `RevPAR, and source_mix for the breakdown by booking channel. Present it as a short table.`,
       );
     }
     case "guest_outreach_draft": {
@@ -64,8 +65,9 @@ export function getPrompt(name: string, args: Record<string, unknown> = {}) {
       const channel = String(args.channel ?? "whatsapp");
       return userText(
         `Draft a friendly ${channel} message for ${audience} about ${theme}. Keep it short, in ` +
-          `Indian English, with a clear call to action. Use search_guests to check who qualifies; ` +
-          `do not send anything — just draft it for my approval.`,
+          `Indian English, with a clear call to action. Use search_guests (its stayedFrom/stayedTo and ` +
+          `marketingConsent filters) to find who qualifies, and only include guests who have opted in to ` +
+          `marketing. Do not send anything — just draft it for my approval.`,
       );
     }
     default:

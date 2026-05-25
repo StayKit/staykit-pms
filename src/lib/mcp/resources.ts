@@ -5,7 +5,7 @@
 import { prisma } from "../db";
 import { getKpis } from "../reports";
 import { parseYmd } from "../dates";
-import type { McpContext } from "./tools";
+import { propertyScopeWhere, type McpContext } from "./tools";
 
 export interface ResourceDescriptor {
   uri: string;
@@ -23,7 +23,7 @@ export interface ResourceContents {
 /** Concrete resources the client can enumerate (plus dynamic per-property entries). */
 export async function listResources(ctx: McpContext): Promise<ResourceDescriptor[]> {
   const properties = await prisma.property.findMany({
-    where: { ownerId: ctx.ownerId, active: true },
+    where: { ...propertyScopeWhere(ctx), active: true },
     select: { id: true, name: true },
   });
   const out: ResourceDescriptor[] = [
@@ -71,28 +71,36 @@ function json(uri: string, data: unknown): ResourceContents {
 export async function readResource(uri: string, ctx: McpContext): Promise<ResourceContents> {
   if (uri === "staykit://properties") {
     const properties = await prisma.property.findMany({
-      where: { ownerId: ctx.ownerId },
+      where: propertyScopeWhere(ctx),
       select: { id: true, name: true, city: true, state: true, gstin: true },
     });
     return json(uri, properties);
   }
 
+  // A scoped (MANAGER/STAFF) caller can only reach properties in their scope.
+  const inScope = (id: string) =>
+    ctx.propertyScopes.length === 0 || ctx.propertyScopes.includes(id);
+
   const property = uri.match(/^staykit:\/\/properties\/([^/]+)$/);
   if (property) {
-    const p = await prisma.property.findFirst({
-      where: { id: property[1], ownerId: ctx.ownerId },
-      include: { rooms: true, roomTypes: true },
-    });
+    const p = inScope(property[1])
+      ? await prisma.property.findFirst({
+          where: { id: property[1], ownerId: ctx.ownerId },
+          include: { rooms: true, roomTypes: true },
+        })
+      : null;
     if (!p) throw new Error("Property not found.");
     return json(uri, p);
   }
 
   const policy = uri.match(/^staykit:\/\/policies\/cancellation\/([^/]+)$/);
   if (policy) {
-    const p = await prisma.property.findFirst({
-      where: { id: policy[1], ownerId: ctx.ownerId },
-      select: { cancellationPolicy: true, name: true },
-    });
+    const p = inScope(policy[1])
+      ? await prisma.property.findFirst({
+          where: { id: policy[1], ownerId: ctx.ownerId },
+          select: { cancellationPolicy: true, name: true },
+        })
+      : null;
     if (!p) throw new Error("Property not found.");
     return {
       uri,
@@ -104,7 +112,7 @@ export async function readResource(uri: string, ctx: McpContext): Promise<Resour
   const booking = uri.match(/^staykit:\/\/bookings\/([^/]+)$/);
   if (booking) {
     const b = await prisma.booking.findFirst({
-      where: { id: booking[1], property: { ownerId: ctx.ownerId } },
+      where: { id: booking[1], property: propertyScopeWhere(ctx) },
       include: {
         guests: { include: { guest: true } },
         rooms: { include: { room: true } },
@@ -118,7 +126,9 @@ export async function readResource(uri: string, ctx: McpContext): Promise<Resour
 
   const occ = uri.match(/^staykit:\/\/reports\/occupancy\/([^/]+)\/([^/]+)$/);
   if (occ) {
-    const kpis = await getKpis(ctx.ownerId, parseYmd(occ[1]), parseYmd(occ[2]));
+    // A single-property-scoped caller only sees their property's occupancy.
+    const propertyId = ctx.propertyScopes.length === 1 ? ctx.propertyScopes[0] : undefined;
+    const kpis = await getKpis(ctx.ownerId, parseYmd(occ[1]), parseYmd(occ[2]), propertyId);
     return json(uri, kpis);
   }
 

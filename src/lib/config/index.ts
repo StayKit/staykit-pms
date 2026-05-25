@@ -47,16 +47,27 @@ export const MCP = {
   perTokenCallsPerMin: 60,
   perTokenCallsPerHour: 1000,
   sendNotificationPerHour: 10,
+  // Scopes an MCP token may be granted. This is the *operational* set — the things an
+  // owner does in reaction to an inbound request (see docs/mcp.md, "AI vs portal").
+  // Fine-tuning permissions (rates:write, team:manage, mcp:admin) are deliberately
+  // excluded: they have no MCP tools and must be done in the portal. `properties:write`
+  // is included only because it gates maintenance blocks; inventory/property CRUD is UI-only.
   scopes: [
     "bookings:read",
     "bookings:write",
     "bookings:cancel",
     "payments:read",
+    "payments:write",
     "payments:refund",
     "properties:read",
     "properties:write",
-    "reports:read",
+    "guests:read",
+    "guests:write",
+    "notifications:read",
     "notifications:send",
+    "compliance:read",
+    "compliance:write",
+    "reports:read",
   ],
 } as const;
 

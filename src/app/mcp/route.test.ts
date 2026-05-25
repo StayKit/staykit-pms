@@ -2,11 +2,13 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { createHash } from "node:crypto";
 import { POST, GET } from "./route";
 import { prisma } from "@/lib/db";
+import { resetRateLimits } from "@/lib/mcp/ratelimit";
 import { resetDb, seedBasic, type Fixture } from "../../../test/factories";
 
 let fx: Fixture;
 beforeEach(async () => {
   await resetDb();
+  resetRateLimits();
   fx = await seedBasic({ gstin: null });
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -219,7 +221,7 @@ describe("MCP route — auth enforcement", () => {
       await rpc({ jsonrpc: "2.0", id: 11, method: "tools/list" }, { authorization: "Bearer ro" })
     ).json();
     const names = body.result.tools.map((t: { name: string }) => t.name);
-    expect(names).toEqual(["get_kpis"]); // only the reports:read tool
+    expect(names).toEqual(["get_kpis", "source_mix"]); // only the reports:read tools
   });
 
   it("records DENIED when a tool is called outside the token's scope", async () => {

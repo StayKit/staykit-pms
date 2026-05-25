@@ -1,7 +1,7 @@
 # StayKit — Functional Audit (User's Cap, v2)
 
 _Perspective: a non-technical homestay owner / front-desk staff running the property day-to-day._
-_Date: 2026-05-25. This is a deeper pass after the first `USER_AUDIT.md` (whose 25 items are largely remediated). It focuses on what is still broken, missing, or misleading._
+_Date: 2026-05-25. This is a deeper pass after an earlier user audit (whose 25 items were remediated). It focuses on what is still broken, missing, or misleading._
 
 Items marked **✓ code-verified** were confirmed by reading the source during this audit. Others are strong findings from a structured review.
 

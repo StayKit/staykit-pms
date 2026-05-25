@@ -10,12 +10,18 @@ export type Permission =
   | "bookings:write"
   | "bookings:cancel"
   | "payments:read"
+  | "payments:write"
   | "payments:refund"
   | "properties:read"
   | "properties:write"
   | "rates:write"
+  | "guests:read"
+  | "guests:write"
   | "team:manage"
+  | "notifications:read"
   | "notifications:send"
+  | "compliance:read"
+  | "compliance:write"
   | "reports:read"
   | "mcp:admin";
 
@@ -26,12 +32,18 @@ const ALL: Permission[] = [
   "bookings:write",
   "bookings:cancel",
   "payments:read",
+  "payments:write",
   "payments:refund",
   "properties:read",
   "properties:write",
   "rates:write",
+  "guests:read",
+  "guests:write",
   "team:manage",
+  "notifications:read",
   "notifications:send",
+  "compliance:read",
+  "compliance:write",
   "reports:read",
   "mcp:admin",
 ];
@@ -43,15 +55,31 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "bookings:write",
     "bookings:cancel",
     "payments:read",
+    "payments:write",
     "payments:refund",
     "properties:read",
     "properties:write",
     "rates:write",
+    "guests:read",
+    "guests:write",
+    "notifications:read",
     "notifications:send",
+    "compliance:read",
+    "compliance:write",
     "reports:read",
   ],
-  // Front-desk / housekeeping: operate the day, but no financial or config power.
-  STAFF: ["bookings:read", "bookings:write", "properties:read", "notifications:send"],
+  // Front-desk / housekeeping: operate the day (incl. guest lookups and Form C at the
+  // desk), but no financial power (payments:write/refund) and no PII destruction (guests:write).
+  STAFF: [
+    "bookings:read",
+    "bookings:write",
+    "properties:read",
+    "guests:read",
+    "notifications:read",
+    "notifications:send",
+    "compliance:read",
+    "compliance:write",
+  ],
 };
 
 export function can(role: Role, permission: Permission): boolean {
