@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { OtpFlow } from "@/components/OtpFlow";
+import { BrandGlyph } from "@/components/BrandGlyph";
 
 export const metadata = { title: "Sign in — StayKit" };
 
@@ -8,7 +9,9 @@ export default function SignInPage() {
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="brand">
-          <div className="mark">S</div>
+          <div className="mark">
+            <BrandGlyph />
+          </div>
           <div style={{ fontWeight: 600, fontSize: 16 }}>StayKit</div>
         </div>
         <h1>Sign in to your workspace</h1>

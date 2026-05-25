@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getGuestSession } from "@/lib/auth/session";
 import { OtpFlow } from "@/components/OtpFlow";
+import { BrandGlyph } from "@/components/BrandGlyph";
 
 export const metadata = { title: "Your booking — StayKit" };
 export const dynamic = "force-dynamic";
@@ -13,7 +14,9 @@ export default async function GuestEntry() {
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="brand">
-          <div className="mark">S</div>
+          <div className="mark">
+            <BrandGlyph />
+          </div>
           <div style={{ fontWeight: 600, fontSize: 16 }}>StayKit</div>
         </div>
         <h1>View your booking</h1>

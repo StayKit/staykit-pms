@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
+import { BrandGlyph } from "@/components/BrandGlyph";
 
 export const metadata = {
   title: "StayKit — Run your homestay, not a spreadsheet",
@@ -46,7 +47,9 @@ export default function LandingPage() {
       <nav className="mk-nav">
         <div className="mk-nav-inner">
           <Link href="/" className="brand">
-            <span className="mark">S</span>
+            <span className="mark">
+              <BrandGlyph />
+            </span>
             <span>StayKit</span>
           </Link>
           <div className="links">

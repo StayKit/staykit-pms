@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { BrandGlyph } from "@/components/BrandGlyph";
 import { NAV, titleForPath } from "./nav";
 import { QuickAdd, type QuickAddChannel, type QuickAddRoom } from "./QuickAdd";
 import { PropertySwitcher } from "./PropertySwitcher";
@@ -50,7 +51,9 @@ export function OwnerShell({
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="mark">S</div>
+          <div className="mark">
+            <BrandGlyph />
+          </div>
           <div>
             <div className="name">StayKit</div>
             <div className="sub">Open-source PMS</div>
