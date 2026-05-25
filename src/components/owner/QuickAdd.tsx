@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/Icon";
-import { createBookingAction } from "@/lib/actions/bookings";
+import { createBookingAction, quoteBookingAction, type BookingQuote } from "@/lib/actions/bookings";
 
 export interface QuickAddRoom {
   id: string;
@@ -42,6 +42,9 @@ export function QuickAdd({
   const [step, setStep] = useState(1);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The rate field follows the property's rate plans until staff type their own value.
+  const [rateManual, setRateManual] = useState(false);
+  const [quote, setQuote] = useState<BookingQuote | null>(null);
   const [form, setForm] = useState({
     guestName: "",
     guestPhone: "",
@@ -61,17 +64,43 @@ export function QuickAdd({
     if (open) {
       setStep(1);
       setError(null);
+      setRateManual(false);
       setForm((f) => ({
         ...f,
         roomId: prefillRoom ?? f.roomId,
         checkIn: prefillDate ?? f.checkIn,
-        nightlyRateRupees:
-          rooms.find((r) => r.id === (prefillRoom ?? f.roomId))?.baseRateRupees ??
-          f.nightlyRateRupees,
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Auto-price the stay from rate plans and check availability whenever the room or
+  // dates change (audit P0 #1 + #2). Skipped once staff type their own rate.
+  useEffect(() => {
+    if (!open || !form.roomId) return;
+    let active = true;
+    const handle = setTimeout(async () => {
+      const q = await quoteBookingAction({
+        propertyId,
+        roomId: form.roomId,
+        checkIn: form.checkIn,
+        checkOut: form.checkOut,
+      });
+      if (!active || !q.ok) return;
+      setQuote(q);
+      if (!rateManual && q.nightlyRupees > 0) {
+        setForm((f) => ({ ...f, nightlyRateRupees: q.nightlyRupees }));
+      }
+    }, 200);
+    return () => {
+      active = false;
+      clearTimeout(handle);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, form.roomId, form.checkIn, form.checkOut, rateManual, propertyId]);
+
+  const unavailable = new Set(quote?.unavailableRoomIds ?? []);
+  const selectedUnavailable = unavailable.has(form.roomId);
 
   function close() {
     const params = new URLSearchParams(sp.toString());
@@ -89,14 +118,25 @@ export function QuickAdd({
     1,
     Math.round((new Date(form.checkOut).getTime() - new Date(form.checkIn).getTime()) / 86_400_000),
   );
-  const subtotal = form.nightlyRateRupees * nights;
+  // Auto rates can vary per night (weekday/weekend); trust the server quote's subtotal.
+  // A manual rate is a flat per-night figure.
+  const subtotal =
+    !rateManual && quote?.ok && quote.subtotalRupees > 0
+      ? quote.subtotalRupees
+      : form.nightlyRateRupees * nights;
   const gst = Math.round(subtotal * 0.05);
   const total = subtotal + gst;
 
   async function submit() {
     setPending(true);
     setError(null);
-    const res = await createBookingAction({ propertyId, ...form });
+    // In auto mode, omit the rate so the engine applies rate plans per night exactly.
+    const { nightlyRateRupees, ...rest } = form;
+    const res = await createBookingAction({
+      propertyId,
+      ...rest,
+      ...(rateManual ? { nightlyRateRupees } : {}),
+    });
     setPending(false);
     if (res.ok) {
       close();
@@ -195,8 +235,36 @@ export function QuickAdd({
                   type="number"
                   min={0}
                   value={form.nightlyRateRupees}
-                  onChange={(e) => set("nightlyRateRupees", +e.target.value)}
+                  onChange={(e) => {
+                    setRateManual(true);
+                    set("nightlyRateRupees", +e.target.value);
+                  }}
                 />
+                {!rateManual && quote?.ok && (
+                  <div className="hint">
+                    {quote.appliedPlan ? (
+                      <>
+                        <Icon name="check" className="icon-sm" style={{ color: "var(--brand)" }} />{" "}
+                        {quote.appliedPlan} applied
+                        {quote.varies
+                          ? ` · ₹${subtotal.toLocaleString("en-IN")} for ${nights} nights`
+                          : ""}
+                      </>
+                    ) : (
+                      <>Base rate{quote.varies ? " (varies by night)" : ""}</>
+                    )}
+                  </div>
+                )}
+                {rateManual && (
+                  <button
+                    type="button"
+                    className="link-btn hint"
+                    style={{ textAlign: "left", background: "none", border: 0, cursor: "pointer" }}
+                    onClick={() => setRateManual(false)}
+                  >
+                    Use rate plan instead
+                  </button>
+                )}
               </div>
             </div>
 
@@ -207,15 +275,25 @@ export function QuickAdd({
                 onChange={(e) => {
                   const r = rooms.find((x) => x.id === e.target.value);
                   set("roomId", e.target.value);
+                  setRateManual(false);
+                  // Show the new room's base rate instantly; the quote effect then
+                  // refines it with any matching rate plan.
                   if (r) set("nightlyRateRupees", r.baseRateRupees);
                 }}
               >
                 {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
+                  <option key={r.id} value={r.id} disabled={unavailable.has(r.id)}>
                     {r.label}
+                    {unavailable.has(r.id) ? " — booked / blocked" : ""}
                   </option>
                 ))}
               </select>
+              {selectedUnavailable && (
+                <div className="error-text" style={{ marginTop: 4 }}>
+                  <Icon name="info" className="icon-sm" /> This room isn&apos;t free for those
+                  dates. Pick another room or change the dates.
+                </div>
+              )}
             </div>
 
             <div className="field">
@@ -298,8 +376,15 @@ export function QuickAdd({
                 <div>
                   <div>Room charge</div>
                   <div className="sub">
-                    ₹ {form.nightlyRateRupees.toLocaleString("en-IN")} × {nights} nights
+                    {!rateManual && quote?.ok && quote.varies
+                      ? `${quote.appliedPlan ?? "Rate plan"} · rates vary by night · ${nights} nights`
+                      : `₹ ${form.nightlyRateRupees.toLocaleString("en-IN")} × ${nights} nights`}
                   </div>
+                  {!rateManual && quote?.ok && quote.appliedPlan && !quote.varies && (
+                    <div className="sub" style={{ color: "var(--brand)" }}>
+                      {quote.appliedPlan} applied
+                    </div>
+                  )}
                 </div>
                 <div />
                 <div className="money">₹ {subtotal.toLocaleString("en-IN")}</div>
@@ -358,6 +443,10 @@ export function QuickAdd({
               onClick={() => {
                 if (!form.guestName || !form.guestPhone) {
                   setError("Guest name and mobile are required.");
+                  return;
+                }
+                if (selectedUnavailable) {
+                  setError("That room isn't available for those dates. Pick another.");
                   return;
                 }
                 setError(null);

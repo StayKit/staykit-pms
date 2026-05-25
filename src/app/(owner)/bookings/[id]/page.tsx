@@ -43,13 +43,20 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   });
 
   const canMove = b.status !== "CANCELLED" && b.status !== "CHECKED_OUT";
-  const propertyRooms = canMove
-    ? await prisma.room.findMany({
-        where: { propertyId: b.propertyId, active: true },
-        include: { roomType: true },
-        orderBy: { name: "asc" },
-      })
-    : [];
+  const [propertyRooms, templates] = await Promise.all([
+    canMove
+      ? prisma.room.findMany({
+          where: { propertyId: b.propertyId, active: true },
+          include: { roomType: true },
+          orderBy: { name: "asc" },
+        })
+      : Promise.resolve([]),
+    prisma.notificationTemplate.findMany({
+      where: { ownerId: ctx.ownerId, active: true },
+      orderBy: [{ triggerKey: "asc" }, { channel: "asc" }],
+      select: { id: true, name: true, channel: true },
+    }),
+  ]);
 
   const guest = b.guests[0]?.guest;
   const room = b.rooms[0]?.room;
@@ -101,6 +108,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     comms: b.notifications.map((n) => {
       const ci = CHANNEL_ICON[n.channel];
       return {
+        id: n.id,
         icon: ci.icon,
         tone: ci.tone,
         title: `${n.triggerKey.replaceAll("_", " ").toLowerCase()} (${n.channel.toLowerCase()})`,
@@ -114,7 +122,14 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
       when: fmtTime(a.createdAt),
     })),
     notes: b.notes,
+    arrivalTime: b.arrivalTime,
+    guestRequests: b.guestRequests,
+    cancelRequest: b.cancelRequestedAt
+      ? { when: fmtTime(b.cancelRequestedAt), reason: b.cancelRequestReason }
+      : null,
     onlineEnabled: await onlinePaymentsEnabled(),
+    templates,
+    guestHasEmail: !!guest?.email,
     move:
       canMove && room
         ? {

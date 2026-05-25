@@ -70,8 +70,8 @@ export async function applyPayment(
   amountPaise: number,
   meta: { razorpayPaymentId?: string; method?: string; paymentLinkId?: string } = {},
 ) {
-  return prisma.$transaction(async (tx) => {
-    const payment = await tx.payment.create({
+  const payment = await prisma.$transaction(async (tx) => {
+    const created = await tx.payment.create({
       data: {
         bookingId,
         amount: amountPaise,
@@ -96,8 +96,37 @@ export async function applyPayment(
         });
       }
     }
-    return payment;
+    return created;
   });
+
+  // Notify the guest a payment was received — covers cash, online and booking-time "paid"
+  // (best-effort; no-op when no PAYMENT_RECEIVED template exists). Centralised here so the
+  // cash-first path notifies too, not just the Razorpay webhook.
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { property: true, guests: { where: { isPrimary: true }, include: { guest: true } } },
+  });
+  const guest = booking?.guests[0]?.guest;
+  if (booking && guest) {
+    await enqueueNotification({
+      ownerId: booking.property.ownerId,
+      triggerKey: "PAYMENT_RECEIVED",
+      to: guest.phone,
+      email: guest.email,
+      bookingId,
+      scope: {
+        guest: { name: guest.name },
+        booking: {
+          ref: booking.ref,
+          checkIn: booking.checkIn.toISOString(),
+          checkOut: booking.checkOut.toISOString(),
+        },
+        property: { name: booking.property.name, checkInTime: booking.property.checkInTime },
+        amount: { due: booking.totalAmount - booking.amountPaid, total: booking.totalAmount },
+      },
+    }).catch(() => {});
+  }
+  return payment;
 }
 
 export class RefundError extends Error {

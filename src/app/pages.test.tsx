@@ -312,7 +312,11 @@ describe("owner pages", () => {
     expect(await renderRSC((await load("./(owner)/notifications/page")).default())).toContain(
       "Templates",
     );
-    expect(await renderRSC((await load("./(owner)/reports/page")).default())).toContain("RevPAR");
+    expect(
+      await renderRSC(
+        (await load("./(owner)/reports/page")).default({ searchParams: Promise.resolve({}) }),
+      ),
+    ).toContain("RevPAR");
     expect(await renderRSC((await load("./(owner)/assistant/page")).default())).toContain(
       "MCP for Claude.ai",
     );
@@ -649,7 +653,7 @@ describe("page edge-case branches", () => {
         searchParams: Promise.resolve({ q: "zzzznotaname" }),
       }),
     );
-    expect(html).toContain("No guests found");
+    expect(html).toContain("No guests match your search");
   });
 
   it("reports page shows an empty source mix", async () => {
@@ -659,7 +663,9 @@ describe("page edge-case branches", () => {
     await prisma.bookingRoom.deleteMany();
     await prisma.bookingGuest.deleteMany();
     await prisma.booking.deleteMany();
-    const html = await renderRSC((await load("./(owner)/reports/page")).default());
+    const html = await renderRSC(
+      (await load("./(owner)/reports/page")).default({ searchParams: Promise.resolve({}) }),
+    );
     expect(html).toContain("No bookings in range");
   });
 

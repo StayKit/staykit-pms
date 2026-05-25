@@ -6,6 +6,7 @@ import { shortDate, nightsBetween } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { Icon } from "@/components/Icon";
 import { onlinePaymentsEnabled } from "@/lib/payments/razorpay/client";
+import { GuestBookingActions } from "@/components/guest/GuestBookingActions";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +25,13 @@ export default async function GuestBookingDetail({ params }: { params: Promise<{
       property: true,
       rooms: { include: { room: true } },
       paymentLinks: { orderBy: { createdAt: "desc" } },
+      guests: { where: { isPrimary: true }, include: { guest: true } },
     },
   });
   if (!b) notFound();
+
+  const primaryGuest = b.guests[0]?.guest;
+  const cancellable = b.status !== "CANCELLED" && b.status !== "CHECKED_OUT";
 
   const room = b.rooms[0]?.room;
   const due = b.totalAmount - b.amountPaid;
@@ -168,23 +173,16 @@ export default async function GuestBookingDetail({ params }: { params: Promise<{
               </div>
             </div>
 
-            <button
-              className="btn"
-              style={{ width: "100%", justifyContent: "center", marginTop: 12 }}
-            >
-              <Icon name="map-pin" className="icon-sm" /> How to reach us
-            </button>
-            <button
-              className="btn btn-ghost"
-              style={{
-                width: "100%",
-                justifyContent: "center",
-                marginTop: 6,
-                color: "var(--st-unpaid)",
+            <GuestBookingActions
+              bookingId={b.id}
+              initial={{
+                email: primaryGuest?.email ?? "",
+                arrivalTime: b.arrivalTime ?? "",
+                requests: b.guestRequests ?? "",
               }}
-            >
-              Request to cancel
-            </button>
+              cancelRequested={!!b.cancelRequestedAt}
+              cancellable={cancellable}
+            />
           </div>
         </div>
       </div>

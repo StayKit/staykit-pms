@@ -17,7 +17,9 @@ import { createPaymentLinkForBooking, applyPayment } from "../payments/service";
 import { onlinePaymentsEnabled } from "../payments/razorpay/client";
 import { writeAudit } from "../audit";
 import { prisma } from "../db";
-import { toPaise, inr } from "../money";
+import { toPaise, toRupees, inr } from "../money";
+import { eachNight, utcMidnight, nightsBetween } from "../dates";
+import { quoteStay, type RatePlanLike } from "../booking/rates";
 
 export interface ActionResult {
   ok: boolean;
@@ -95,6 +97,117 @@ export async function createBookingAction(
   }
 }
 
+export interface BookingQuote {
+  ok: boolean;
+  message?: string;
+  nights: number;
+  /** Representative nightly rate in rupees (subtotal / nights, rounded) for the rate field. */
+  nightlyRupees: number;
+  subtotalRupees: number;
+  /** Human label for the applied rate plan, "Mixed rate plans", or null for the base rate. */
+  appliedPlan: string | null;
+  /** True when nightly rates differ across the stay (weekday vs weekend, etc.). */
+  varies: boolean;
+  /** Rooms (in this property) that can't take the stay — already booked or under maintenance. */
+  unavailableRoomIds: string[];
+}
+
+/**
+ * Price a prospective stay from the property's rate plans AND report which rooms are
+ * free for those dates — powering QuickAdd's auto-rate + availability hints (audit P0
+ * #1 and #2). Pure read; safe to call on every room/date change.
+ */
+export async function quoteBookingAction(input: {
+  propertyId: string;
+  roomId: string;
+  checkIn: string;
+  checkOut: string;
+}): Promise<BookingQuote> {
+  const empty: BookingQuote = {
+    ok: false,
+    nights: 0,
+    nightlyRupees: 0,
+    subtotalRupees: 0,
+    appliedPlan: null,
+    varies: false,
+    unavailableRoomIds: [],
+  };
+  try {
+    const ctx = await requireContext();
+    assertAccess(ctx, "bookings:write", { propertyId: input.propertyId });
+
+    const start = utcMidnight(input.checkIn);
+    const end = utcMidnight(input.checkOut);
+    const nights = nightsBetween(start, end);
+    if (nights < 1) return { ...empty, message: "Check-out must be after check-in." };
+
+    const room = await prisma.room.findFirst({
+      where: { id: input.roomId, propertyId: input.propertyId },
+      include: { roomType: true },
+    });
+
+    // Rooms that clash with the requested window (occupied or under maintenance).
+    const [occupied, blocks] = await Promise.all([
+      prisma.bookingRoom.findMany({
+        where: { date: { gte: start, lt: end }, room: { propertyId: input.propertyId } },
+        select: { roomId: true },
+      }),
+      prisma.maintenanceBlock.findMany({
+        where: { propertyId: input.propertyId, startDate: { lt: end }, endDate: { gt: start } },
+        select: { roomId: true },
+      }),
+    ]);
+    const unavailable = new Set<string>();
+    for (const o of occupied) unavailable.add(o.roomId);
+    for (const b of blocks) unavailable.add(b.roomId);
+    const unavailableRoomIds = [...unavailable];
+
+    if (!room) {
+      return { ...empty, ok: true, nights, unavailableRoomIds };
+    }
+
+    const plans = await loadRatePlansForQuote(input.propertyId);
+    const { perNight, subtotal } = quoteStay(
+      eachNight(start, end),
+      room.roomTypeId,
+      room.roomType.baseRate,
+      plans,
+    );
+    const planNames = [...new Set(perNight.map((n) => n.planName).filter(Boolean))] as string[];
+    const rates = new Set(perNight.map((n) => n.rate));
+    const appliedPlan =
+      planNames.length === 0 ? null : planNames.length === 1 ? planNames[0] : "Mixed rate plans";
+
+    return {
+      ok: true,
+      nights,
+      subtotalRupees: toRupees(subtotal),
+      nightlyRupees: toRupees(Math.round(subtotal / nights)),
+      appliedPlan,
+      varies: rates.size > 1,
+      unavailableRoomIds,
+    };
+  } catch {
+    return { ...empty, message: "Could not price this stay." };
+  }
+}
+
+async function loadRatePlansForQuote(propertyId: string): Promise<RatePlanLike[]> {
+  const plans = await prisma.ratePlan.findMany({
+    where: { propertyId },
+    include: { overrides: true },
+  });
+  return plans.map((p) => ({
+    id: p.id,
+    name: p.name,
+    priority: p.priority,
+    startDate: p.startDate,
+    endDate: p.endDate,
+    daysOfWeek: p.daysOfWeek,
+    overrides: p.overrides.map((o) => ({ roomTypeId: o.roomTypeId, amount: o.amount })),
+  }));
+}
+
 export async function checkInAction(bookingId: string): Promise<ActionResult> {
   const ctx = await requireContext();
   const b = await prisma.booking.findUnique({
@@ -158,6 +271,31 @@ export async function moveBookingAction(
     if (e instanceof BookingValidationError) return { ok: false, message: e.message };
     return { ok: false, message: "Could not move the booking." };
   }
+}
+
+/** Add or edit the internal notes on an existing booking (audit P1 #4). */
+export async function updateBookingNotesAction(
+  bookingId: string,
+  notes: string,
+): Promise<ActionResult> {
+  const ctx = await requireContext();
+  const b = await prisma.booking.findUnique({ where: { id: bookingId } });
+  if (!b) return { ok: false, message: "Booking not found" };
+  assertAccess(ctx, "bookings:write", { propertyId: b.propertyId });
+  const trimmed = notes.trim();
+  if (trimmed.length > 2000) return { ok: false, message: "Notes are too long (max 2000 chars)." };
+  await prisma.booking.update({ where: { id: bookingId }, data: { notes: trimmed || null } });
+  await writeAudit({
+    ownerId: ctx.ownerId,
+    actorType: "USER",
+    actorName: ctx.name,
+    action: "BOOKING_NOTE_UPDATED",
+    entityType: "Booking",
+    entityId: bookingId,
+    summary: trimmed ? "updated booking notes" : "cleared booking notes",
+  });
+  revalidatePath(`/bookings/${bookingId}`);
+  return { ok: true, message: "Notes saved." };
 }
 
 export async function sendPaymentLinkAction(bookingId: string): Promise<ActionResult> {

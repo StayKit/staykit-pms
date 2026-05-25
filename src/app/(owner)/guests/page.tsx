@@ -30,9 +30,14 @@ export default async function GuestsPage({
           <h2 style={{ fontSize: 22 }}>Guests</h2>
           <div className="sub">{guests.length} guests in your address book</div>
         </div>
-        <button className="btn btn-primary">
-          <Icon name="user-plus" className="icon-sm" /> Add guest
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <a className="btn" href="/api/reports/guests.csv">
+            <Icon name="external" className="icon-sm" /> Export CSV
+          </a>
+          <Link className="btn btn-primary" href="/bookings?new=1">
+            <Icon name="user-plus" className="icon-sm" /> Add guest
+          </Link>
+        </div>
       </div>
 
       <div className="card">
@@ -98,8 +103,26 @@ export default async function GuestsPage({
               ))}
               {guests.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="empty">
-                    No guests found.
+                  <td colSpan={6}>
+                    <div className="empty-state">
+                      <Icon name="users" className="icon" />
+                      <div className="empty-title">
+                        {q ? "No guests match your search" : "No guests yet"}
+                      </div>
+                      <div className="empty-sub">
+                        Guests are added automatically when you take a booking.
+                      </div>
+                      <div className="empty-actions">
+                        {q && (
+                          <Link className="btn" href="/guests">
+                            Clear search
+                          </Link>
+                        )}
+                        <Link className="btn btn-primary" href="/bookings?new=1">
+                          <Icon name="plus" className="icon-sm" /> New booking
+                        </Link>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               )}

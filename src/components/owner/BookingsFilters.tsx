@@ -11,6 +11,7 @@ const FILTERS = [
   { id: "tentative", label: "Tentative" },
   { id: "checkedin", label: "Checked in" },
   { id: "foreign", label: "Foreign guests" },
+  { id: "cancelreq", label: "Cancellation requests" },
 ];
 
 export function BookingsFilters() {
@@ -18,16 +19,20 @@ export function BookingsFilters() {
   const sp = useSearchParams();
   const filter = sp.get("filter") ?? "all";
   const [q, setQ] = useState(sp.get("q") ?? "");
+  const [from, setFrom] = useState(sp.get("from") ?? "");
+  const [to, setTo] = useState(sp.get("to") ?? "");
 
-  function apply(next: { filter?: string; q?: string }) {
+  function apply(next: { filter?: string; q?: string; from?: string; to?: string }) {
     const params = new URLSearchParams(sp.toString());
     if (next.filter !== undefined) {
       if (next.filter === "all") params.delete("filter");
       else params.set("filter", next.filter);
     }
-    if (next.q !== undefined) {
-      if (next.q) params.set("q", next.q);
-      else params.delete("q");
+    for (const key of ["q", "from", "to"] as const) {
+      const v = next[key];
+      if (v === undefined) continue;
+      if (v) params.set(key, v);
+      else params.delete(key);
     }
     router.push("/bookings?" + params.toString());
   }
@@ -67,6 +72,46 @@ export function BookingsFilters() {
             {f.label}
           </button>
         ))}
+      </div>
+
+      <div
+        style={{ display: "flex", gap: 6, alignItems: "center", marginLeft: "auto" }}
+        title="Filter by check-in date"
+      >
+        <span className="text-xs text-muted">Check-in</span>
+        <input
+          type="date"
+          className="date-input"
+          value={from}
+          max={to || undefined}
+          onChange={(e) => {
+            setFrom(e.target.value);
+            apply({ from: e.target.value });
+          }}
+        />
+        <span className="text-xs text-muted">→</span>
+        <input
+          type="date"
+          className="date-input"
+          value={to}
+          min={from || undefined}
+          onChange={(e) => {
+            setTo(e.target.value);
+            apply({ to: e.target.value });
+          }}
+        />
+        {(from || to) && (
+          <button
+            className="link-btn"
+            onClick={() => {
+              setFrom("");
+              setTo("");
+              apply({ from: "", to: "" });
+            }}
+          >
+            Clear
+          </button>
+        )}
       </div>
     </div>
   );

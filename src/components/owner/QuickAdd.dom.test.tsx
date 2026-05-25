@@ -6,7 +6,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: state.push, refresh: state.refresh }),
   useSearchParams: () => new URLSearchParams(state.search),
 }));
-vi.mock("@/lib/actions/bookings", () => ({ createBookingAction: vi.fn() }));
+vi.mock("@/lib/actions/bookings", () => ({
+  createBookingAction: vi.fn(),
+  // Default: no quote override, so the optimistic base rate stands. Tests can override.
+  quoteBookingAction: vi.fn().mockResolvedValue({ ok: false, unavailableRoomIds: [] }),
+}));
 
 import { createBookingAction } from "@/lib/actions/bookings";
 import { QuickAdd } from "./QuickAdd";

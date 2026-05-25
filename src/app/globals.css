@@ -1310,6 +1310,16 @@ input, select, textarea { font: inherit; color: inherit; }
 .error-text { color: var(--st-unpaid); font-size: 12.5px; }
 .empty { padding: 48px; text-align: center; color: var(--muted); }
 
+/* Actionable empty state (in-context CTA) */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 44px 24px; text-align: center;
+}
+.empty-state > .icon { width: 28px; height: 28px; color: var(--muted-2); margin-bottom: 4px; }
+.empty-title { font-size: 15px; font-weight: 600; color: var(--ink); }
+.empty-sub { font-size: 13px; color: var(--muted); max-width: 360px; }
+.empty-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+
 /* ════════════════════════════════════════════════════════════════════
    Settings — integration disclosure rows
    ════════════════════════════════════════════════════════════════════ */
@@ -1326,4 +1336,164 @@ input, select, textarea { font: inherit; color: inherit; }
 .integration[open] .integration-toggle { background: var(--surface-2); }
 .integration-body {
   padding: 0 16px 16px 68px; font-size: 13px;
+}
+
+/* Keyboard-shortcut key cap */
+.kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 2px 7px;
+  color: var(--ink-2);
+}
+
+/* Sidebar nav badge (e.g. pending cancellation requests) */
+.nav-badge {
+  margin-left: auto;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px;
+  background: var(--st-unpaid, #c0392b); color: #fff;
+  font-size: 11px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* ── Calendar filter popover ──────────────────────────────────── */
+.link-btn {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  color: var(--brand-ink); font: inherit; font-size: 12.5px;
+}
+.link-btn:hover { text-decoration: underline; }
+
+.filter-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2, 0 8px 24px rgba(15,58,55,.14));
+  padding: 8px;
+}
+.filter-pop-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12.5px; font-weight: 600; padding: 4px 6px 8px;
+}
+.filter-pop-group {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); font-weight: 600; padding: 8px 6px 4px;
+}
+.filter-pop-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px; border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+.filter-pop-item:hover { background: var(--surface-2); }
+.filter-pop-item input { accent-color: var(--brand); }
+
+.date-input {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.date-input:focus { outline: 2px solid var(--brand-soft); outline-offset: 1px; }
+
+/* Sortable table headers */
+.th-sort {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; color: inherit; display: inline-flex; align-items: center; gap: 4px;
+}
+.th-sort:hover { color: var(--brand-ink); }
+.th-sort .icon-sm { opacity: 0.5; }
+.th-sort.active .icon-sm { opacity: 1; color: var(--brand); }
+
+/* ════════════════════════════════════════════════════════════════════
+   Responsive — mobile + tablet app shell
+   The sidebar collapses into an off-canvas drawer behind a top bar; form
+   rows stack; the QuickAdd modal becomes a bottom sheet.
+   ════════════════════════════════════════════════════════════════════ */
+.mobile-bar { display: none; }
+.nav-scrim { display: none; }
+
+@media (max-width: 900px) {
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  .mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+    padding: 9px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    z-index: 25;
+  }
+  .mobile-brand {
+    display: flex; align-items: center; gap: 8px;
+    flex: 1; font-weight: 600; font-size: 15px; letter-spacing: -0.01em;
+  }
+  .mobile-brand .mark {
+    width: 26px; height: 26px; border-radius: 8px; background: var(--brand);
+    display: grid; place-items: center; color: #fff;
+  }
+  .mobile-brand .mark .brand-glyph { width: 62%; height: 62%; display: block; }
+
+  /* Sidebar → slide-in drawer. */
+  .sidebar {
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    width: 270px; max-width: 84vw;
+    z-index: 60;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform .26s cubic-bezier(.32,.72,.34,1);
+    box-shadow: 8px 0 44px -18px rgba(0,0,0,.34);
+  }
+  .app.nav-open .sidebar { transform: translateX(0); }
+
+  .nav-scrim {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(20,30,28,.34);
+    border: 0; padding: 0; margin: 0;
+    z-index: 55;
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s ease;
+  }
+  .app.nav-open .nav-scrim { opacity: 1; pointer-events: auto; }
+
+  .main { flex: 1; min-height: 0; }
+
+  /* Dashboard topbar: drop the wide search, tighten spacing. */
+  .topbar { padding: 12px 16px; }
+  .topbar .search { display: none; }
+  .topbar-actions { gap: 6px; }
+
+  .page { padding: 16px 16px 88px; }
+
+  /* Stack multi-column form rows. */
+  .field-row, .field-row.thirds { grid-template-columns: 1fr; }
+
+  /* QuickAdd modal → bottom sheet. */
+  .modal {
+    top: auto; bottom: 0; left: 0;
+    width: 100vw; max-width: 100vw;
+    max-height: 92vh;
+    border-radius: 18px 18px 0 0;
+    transform: translateY(100%);
+  }
+  .modal.open { transform: translateY(0); }
+
+  .fab { right: 16px; bottom: 16px; }
 }

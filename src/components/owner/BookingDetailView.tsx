@@ -12,7 +12,12 @@ import {
   cancelAction,
   moveBookingAction,
   recordPaymentAction,
+  updateBookingNotesAction,
 } from "@/lib/actions/bookings";
+import {
+  sendBookingNotificationAction,
+  resendNotificationAction,
+} from "@/lib/actions/notifications";
 import { refundAction, quoteRefundAction, type RefundQuoteResult } from "@/lib/actions/payments";
 import { CANCELLATION_REASONS, type CancellationReason } from "@/lib/booking/cancellation";
 
@@ -52,9 +57,14 @@ export interface BookingDetailData {
     nightly: string;
   };
   payments: { icon: string; tone: string; title: string; sub: string }[];
-  comms: { icon: string; tone: string; title: string; sub: string }[];
+  comms: { id: string; icon: string; tone: string; title: string; sub: string }[];
   audit: { bot: boolean; actor: string; what: string; when: string }[];
   notes: string | null;
+  /** Guest-provided expected arrival time + special requests (from the portal). */
+  arrivalTime: string | null;
+  guestRequests: string | null;
+  /** Present when the guest has asked to cancel (staff still actions it). */
+  cancelRequest: { when: string; reason: string | null } | null;
   /** Present when the booking can still be moved (room/dates). */
   move: {
     roomId: string;
@@ -64,6 +74,10 @@ export interface BookingDetailData {
   } | null;
   /** Whether Razorpay online payment links are enabled (else cash/manual only). */
   onlineEnabled: boolean;
+  /** Active templates the owner can manually send to this guest. */
+  templates: { id: string; name: string; channel: string }[];
+  /** Whether the primary guest has an email (gates email templates in the UI). */
+  guestHasEmail: boolean;
 }
 
 type Tab = "stay" | "guest" | "payments" | "comms" | "audit";
@@ -115,6 +129,31 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
             )}
           </div>
         </div>
+
+        {data.cancelRequest && data.state !== "cancelled" && (
+          <div
+            style={{
+              margin: "0 0 0",
+              padding: "12px 18px",
+              background: "var(--st-unpaid-bg)",
+              color: "var(--st-unpaid)",
+              fontSize: 13,
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              borderTop: "1px solid var(--line)",
+            }}
+          >
+            <Icon name="info" className="icon-sm" />
+            <div>
+              <strong>Guest requested cancellation</strong> · {data.cancelRequest.when}
+              {data.cancelRequest.reason ? ` — "${data.cancelRequest.reason}"` : ""}
+              <div className="text-xs" style={{ color: "var(--ink-2)" }}>
+                Review the refund policy below, then Cancel to confirm.
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="tabs">
           {(["stay", "guest", "payments", "comms", "audit"] as Tab[]).map((tb) => (
@@ -188,12 +227,35 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
               </div>
             </div>
 
-            {data.notes && (
+            {(data.arrivalTime || data.guestRequests) && (
               <div className="bd-section">
-                <h4>Notes</h4>
-                <div style={{ fontSize: 13, color: "var(--ink-2)" }}>{data.notes}</div>
+                <h4>From the guest</h4>
+                <div className="kv-grid">
+                  {data.arrivalTime && <KV k="Expected arrival" v={data.arrivalTime} />}
+                </div>
+                {data.guestRequests && (
+                  <div style={{ marginTop: data.arrivalTime ? 12 : 0 }}>
+                    <div className="text-xs text-muted" style={{ fontWeight: 550 }}>
+                      Special requests
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 2 }}>
+                      {data.guestRequests}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
+
+            <div className="bd-section">
+              <NotesPanel
+                bookingId={data.id}
+                notes={data.notes}
+                onDone={(m) => {
+                  setToast(m);
+                  router.refresh();
+                }}
+              />
+            </div>
 
             {data.move && (
               <div className="bd-section">
@@ -288,17 +350,16 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
                 }}
               />
             )}
-            {data.money.paidRaw > 0 && (
-              <a
-                className="btn"
-                href={`/bookings/${data.id}/invoice`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ marginTop: 16 }}
-              >
-                <Icon name="external" className="icon-sm" /> Download invoice
-              </a>
-            )}
+            <a
+              className="btn"
+              href={`/bookings/${data.id}/invoice`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ marginTop: 16 }}
+            >
+              <Icon name="external" className="icon-sm" />{" "}
+              {data.money.paidRaw > 0 ? "Download invoice" : "Download quote / proforma"}
+            </a>
             {data.money.paidRaw > 0 && data.state !== "cancelled" && (
               <RefundPanel
                 bookingId={data.id}
@@ -313,11 +374,20 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
 
         {tab === "comms" && (
           <div className="bd-section">
-            <h4>Messages sent</h4>
+            <SendMessagePanel
+              bookingId={data.id}
+              templates={data.templates}
+              guestHasEmail={data.guestHasEmail}
+              onDone={(m) => {
+                setToast(m);
+                router.refresh();
+              }}
+            />
+            <h4 style={{ marginTop: 24 }}>Messages sent</h4>
             {data.comms.length === 0 && <div className="text-muted text-sm">No messages yet.</div>}
             {data.comms.map((m, i) => (
               <div
-                key={i}
+                key={m.id}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -333,6 +403,14 @@ export function BookingDetailView({ data }: { data: BookingDetailData }) {
                   <div style={{ fontWeight: 550, fontSize: 13.5 }}>{m.title}</div>
                   <div className="text-xs text-muted">{m.sub}</div>
                 </div>
+                <button
+                  className="btn btn-sm btn-ghost"
+                  disabled={pending}
+                  title="Send this message again"
+                  onClick={() => run(() => resendNotificationAction(m.id))}
+                >
+                  <Icon name="rotate-ccw" className="icon-sm" /> Resend
+                </button>
               </div>
             ))}
           </div>
@@ -647,6 +725,115 @@ function RefundPanel({
         Normal refunds take 5–7 working days. Refunds aren&apos;t possible on payments older than 6
         months.
       </div>
+    </div>
+  );
+}
+
+function NotesPanel({
+  bookingId,
+  notes,
+  onDone,
+}: Readonly<{ bookingId: string; notes: string | null; onDone: (msg: string) => void }>) {
+  const [value, setValue] = useState(notes ?? "");
+  const [pending, start] = useTransition();
+  const dirty = value.trim() !== (notes ?? "").trim();
+
+  return (
+    <div>
+      <h4>Internal notes</h4>
+      <div className="text-xs text-muted" style={{ marginBottom: 8 }}>
+        Private to staff — e.g. &ldquo;wants early check-in&rdquo; or &ldquo;extra pillow&rdquo;.
+      </div>
+      <textarea
+        rows={3}
+        value={value}
+        placeholder="Add a note for this booking…"
+        onChange={(e) => setValue(e.target.value)}
+        style={{ width: "100%" }}
+      />
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <button
+          className="btn btn-primary"
+          disabled={pending || !dirty}
+          onClick={() =>
+            start(async () => {
+              const res = await updateBookingNotesAction(bookingId, value);
+              onDone(res.message ?? (res.ok ? "Notes saved." : "Could not save notes."));
+            })
+          }
+        >
+          <Icon name="check" className="icon-sm" /> Save notes
+        </button>
+        {dirty && (
+          <button
+            className="btn btn-ghost"
+            disabled={pending}
+            onClick={() => setValue(notes ?? "")}
+          >
+            Reset
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SendMessagePanel({
+  bookingId,
+  templates,
+  guestHasEmail,
+  onDone,
+}: Readonly<{
+  bookingId: string;
+  templates: { id: string; name: string; channel: string }[];
+  guestHasEmail: boolean;
+  onDone: (msg: string) => void;
+}>) {
+  const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
+  const [pending, start] = useTransition();
+
+  if (templates.length === 0) {
+    return (
+      <div className="text-sm text-muted">
+        No message templates yet. Add them under Notifications to message this guest.
+      </div>
+    );
+  }
+
+  const selected = templates.find((t) => t.id === templateId);
+  const blockedNoEmail = selected?.channel === "EMAIL" && !guestHasEmail;
+
+  return (
+    <div>
+      <h4 style={{ marginTop: 0 }}>Message this guest</h4>
+      <div className="field">
+        <label>Template</label>
+        <select value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+          {templates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name} ({t.channel.toLowerCase()})
+            </option>
+          ))}
+        </select>
+      </div>
+      {blockedNoEmail && (
+        <div className="error-text" style={{ marginTop: 6 }}>
+          This guest has no email on file — pick an SMS/WhatsApp template or add their email.
+        </div>
+      )}
+      <button
+        className="btn btn-primary"
+        style={{ marginTop: 10 }}
+        disabled={pending || !templateId || blockedNoEmail}
+        onClick={() =>
+          start(async () => {
+            const res = await sendBookingNotificationAction(bookingId, templateId);
+            onDone(res.message ?? (res.ok ? "Message sent." : "Could not send message."));
+          })
+        }
+      >
+        <Icon name="send" className="icon-sm" /> {pending ? "Sending…" : "Send message"}
+      </button>
     </div>
   );
 }

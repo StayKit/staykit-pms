@@ -67,16 +67,21 @@ function makeData(state: DisplayState, over: Partial<BookingDetailData> = {}): B
       { icon: "clock", tone: "empty", title: "balance", sub: "due" },
     ],
     comms: [
-      { icon: "mail", tone: "accent", title: "confirmation", sub: "today" },
-      { icon: "phone", tone: "", title: "payment link", sub: "today" },
+      { id: "n1", icon: "mail", tone: "accent", title: "confirmation", sub: "today" },
+      { id: "n2", icon: "phone", tone: "", title: "payment link", sub: "today" },
     ],
     audit: [
       { bot: true, actor: "Claude (AI)", what: "sent link", when: "today" },
       { bot: false, actor: "Priya", what: "created booking", when: "yesterday" },
     ],
     notes: "Late arrival",
+    arrivalTime: null,
+    guestRequests: null,
+    cancelRequest: null,
     move: null,
     onlineEnabled: false,
+    templates: [],
+    guestHasEmail: true,
     ...over,
   };
 }

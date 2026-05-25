@@ -9,7 +9,6 @@ import { prisma } from "@/lib/db";
 import { verifyWebhookSignature } from "@/lib/payments/razorpay/client";
 import { applyPayment, markRefundProcessed, markRefundFailed } from "@/lib/payments/service";
 import { writeAudit } from "@/lib/audit";
-import { enqueueNotification } from "@/lib/notify/dispatch";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +92,8 @@ async function handlePaymentCaptured(event: RzpEvent) {
   });
   if (!booking) return;
 
+  // applyPayment fires the PAYMENT_RECEIVED notification (centralised so cash + online
+  // both notify), so we only record the audit trail here.
   await writeAudit({
     ownerId: booking.property.ownerId,
     actorType: "SYSTEM",
@@ -102,17 +103,6 @@ async function handlePaymentCaptured(event: RzpEvent) {
     entityId: bookingId,
     summary: `received ${(amount / 100).toLocaleString("en-IN")} for ${booking.ref}`,
   });
-
-  const guest = booking.guests[0]?.guest;
-  if (guest) {
-    await enqueueNotification({
-      ownerId: booking.property.ownerId,
-      triggerKey: "PAYMENT_RECEIVED",
-      to: guest.phone,
-      bookingId,
-      scope: { guest, booking, property: booking.property },
-    }).catch(() => {});
-  }
 }
 
 async function handleRefund(event: RzpEvent, outcome: "processed" | "failed") {

@@ -6,7 +6,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: state.push, refresh: state.refresh }),
   useSearchParams: () => new URLSearchParams(state.search),
 }));
-vi.mock("@/lib/actions/bookings", () => ({ createBookingAction: vi.fn() }));
+vi.mock("@/lib/actions/bookings", () => ({
+  createBookingAction: vi.fn(),
+  quoteBookingAction: vi.fn().mockResolvedValue({ ok: false, unavailableRoomIds: [] }),
+}));
 
 import { QuickAdd } from "./QuickAdd";
 

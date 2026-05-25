@@ -1,30 +1,57 @@
 import Link from "next/link";
 import { getAppContext } from "@/lib/auth/context";
 import { getKpis, sourceMix } from "@/lib/reports";
-import { today, addDays } from "@/lib/dates";
+import { today, addDays, parseYmd, ymd, shortDate, longDate } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { Icon } from "@/components/Icon";
+import { ReportsDateRange } from "@/components/owner/ReportsDateRange";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
   const ctx = (await getAppContext())!;
+  const { from, to } = await searchParams;
   const t0 = today();
 
-  const [todayK, weekK, monthK, quarterK, mix] = await Promise.all([
+  // A custom range (when both dates are set) drives the detailed metrics + source mix.
+  const hasCustom = !!(from && to);
+  const customFrom = from ? parseYmd(from) : addDays(t0, -30);
+  const customToExcl = to ? addDays(parseYmd(to), 1) : addDays(t0, 1); // inclusive end
+
+  const [todayK, weekK, monthK, quarterK, focusK, mix] = await Promise.all([
     getKpis(ctx.ownerId, t0, addDays(t0, 1)),
     getKpis(ctx.ownerId, addDays(t0, -7), addDays(t0, 1)),
     getKpis(ctx.ownerId, addDays(t0, -30), addDays(t0, 1)),
     getKpis(ctx.ownerId, addDays(t0, -90), addDays(t0, 1)),
-    sourceMix(ctx.ownerId, addDays(t0, -90), addDays(t0, 30)),
+    getKpis(ctx.ownerId, customFrom, customToExcl),
+    sourceMix(ctx.ownerId, customFrom, customToExcl),
   ]);
 
+  // Each card links to the bookings list filtered to the same check-in window.
+  const drill = (start: Date, endExcl: Date) =>
+    `/bookings?from=${ymd(start)}&to=${ymd(addDays(endExcl, -1))}`;
   const cards = [
-    { label: "Today", k: todayK },
-    { label: "Last 7 days", k: weekK },
-    { label: "Last 30 days", k: monthK },
-    { label: "Last 90 days", k: quarterK },
+    { label: "Today", k: todayK, href: drill(t0, addDays(t0, 1)) },
+    { label: "Last 7 days", k: weekK, href: drill(addDays(t0, -7), addDays(t0, 1)) },
+    { label: "Last 30 days", k: monthK, href: drill(addDays(t0, -30), addDays(t0, 1)) },
+    { label: "Last 90 days", k: quarterK, href: drill(addDays(t0, -90), addDays(t0, 1)) },
   ];
+  if (hasCustom) {
+    cards.push({
+      label: `${shortDate(customFrom)} – ${shortDate(parseYmd(to!))}`,
+      k: focusK,
+      href: drill(customFrom, customToExcl),
+    });
+  }
+
+  const metricsK = hasCustom ? focusK : monthK;
+  const metricsLabel = hasCustom
+    ? `${longDate(customFrom)} – ${longDate(parseYmd(to!))}`
+    : "last 30 days";
 
   return (
     <div className="page" style={{ paddingTop: 16 }}>
@@ -33,7 +60,8 @@ export default async function ReportsPage() {
           <h2 style={{ fontSize: 22 }}>Reports</h2>
           <div className="sub">Performance and tax-ready summaries</div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <ReportsDateRange />
           <Link className="btn" href="/reports/payments">
             <Icon name="credit-card" className="icon-sm" /> Payments
           </Link>
@@ -48,7 +76,13 @@ export default async function ReportsPage() {
 
       <div className="kpi-grid">
         {cards.map((c) => (
-          <div key={c.label} className="kpi" style={{ cursor: "default" }}>
+          <Link
+            key={c.label}
+            href={c.href}
+            className="kpi"
+            style={{ cursor: "pointer", textDecoration: "none", color: "inherit" }}
+            title="View the bookings behind this number"
+          >
             <div className="label">
               <span className="dot" />
               {c.label}
@@ -65,15 +99,17 @@ export default async function ReportsPage() {
               Occupancy {c.k.occupancyPct}% · ADR {inr(c.k.adrPaise)}
             </div>
             <div className="accent-bar" />
-          </div>
+          </Link>
         ))}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20, marginTop: 24 }}>
         <div className="card card-padded">
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Key metrics (last 30 days)</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Key metrics ({metricsLabel})</h3>
           <div className="sub text-muted text-sm" style={{ marginTop: 2 }}>
-            Plain definitions in tooltips
+            {hasCustom
+              ? "Custom range — pick dates above to change"
+              : "Plain definitions in tooltips"}
           </div>
           <div
             style={{
@@ -85,28 +121,28 @@ export default async function ReportsPage() {
           >
             <Metric
               label="Occupancy"
-              value={`${monthK.occupancyPct}%`}
+              value={`${metricsK.occupancyPct}%`}
               hint="Room-nights sold ÷ available"
             />
-            <Metric label="ADR" value={inr(monthK.adrPaise)} hint="Average price per room sold" />
+            <Metric label="ADR" value={inr(metricsK.adrPaise)} hint="Average price per room sold" />
             <Metric
               label="RevPAR"
-              value={inr(monthK.revparPaise)}
+              value={inr(metricsK.revparPaise)}
               hint="Revenue per available room"
             />
             <Metric
               label="Room-nights sold"
-              value={String(monthK.roomNightsSold)}
+              value={String(metricsK.roomNightsSold)}
               hint="Across all properties"
             />
             <Metric
               label="Available"
-              value={String(monthK.roomNightsAvailable)}
+              value={String(metricsK.roomNightsAvailable)}
               hint="Room-nights on offer"
             />
             <Metric
               label="Room revenue"
-              value={inr(monthK.roomRevenuePaise)}
+              value={inr(metricsK.roomRevenuePaise)}
               hint="Sum of nightly rates"
             />
           </div>

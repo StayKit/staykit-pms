@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
 import { toRupees } from "@/lib/money";
+import { today } from "@/lib/dates";
 import { PropertyTabs } from "@/components/owner/manage/PropertyTabs";
 import { RoomsManager } from "@/components/owner/manage/RoomsManager";
 
@@ -13,7 +14,7 @@ export default async function RoomsPage({ params }: { params: Promise<{ id: stri
   const property = await prisma.property.findFirst({ where: { id, ownerId: ctx.ownerId } });
   if (!property) notFound();
 
-  const [roomTypes, rooms] = await Promise.all([
+  const [roomTypes, rooms, tonight] = await Promise.all([
     prisma.roomType.findMany({
       where: { propertyId: id },
       orderBy: { sortOrder: "asc" },
@@ -24,7 +25,34 @@ export default async function RoomsPage({ params }: { params: Promise<{ id: stri
       orderBy: { name: "asc" },
       include: { roomType: true },
     }),
+    // Who is in each room tonight (the night starting today)?
+    prisma.bookingRoom.findMany({
+      where: {
+        date: today(),
+        room: { propertyId: id },
+        booking: { status: { in: ["CONFIRMED", "CHECKED_IN"] } },
+      },
+      include: {
+        booking: {
+          select: {
+            id: true,
+            status: true,
+            guests: { where: { isPrimary: true }, include: { guest: { select: { name: true } } } },
+          },
+        },
+      },
+    }),
   ]);
+
+  const occupancy = new Map<string, { guestName: string; bookingId: string; checkedIn: boolean }>();
+  for (const br of tonight) {
+    const guestName = br.booking.guests[0]?.guest.name ?? "Guest";
+    occupancy.set(br.roomId, {
+      guestName,
+      bookingId: br.booking.id,
+      checkedIn: br.booking.status === "CHECKED_IN",
+    });
+  }
 
   return (
     <div className="page" style={{ paddingTop: 16 }}>
@@ -46,6 +74,7 @@ export default async function RoomsPage({ params }: { params: Promise<{ id: stri
           typeName: r.roomType.name,
           active: r.active,
           cleanliness: r.cleanliness,
+          occupant: occupancy.get(r.id) ?? null,
         }))}
       />
     </div>

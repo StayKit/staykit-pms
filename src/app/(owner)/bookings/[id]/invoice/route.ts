@@ -38,11 +38,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const hasGst = !!b.property.gstin && b.taxAmount > 0;
   const halfTax = Math.round(b.taxAmount / 2);
   const invoiceNo = `${b.property.invoicePrefix}-${b.ref}`;
+  // Before any payment is recorded this is a quote / proforma, not a tax invoice (audit P3 #20).
+  const isProforma = b.amountPaid <= 0;
+  const docTitle = isProforma ? "Proforma Invoice / Quote" : "Tax Invoice";
 
   const html = `<!doctype html>
 <html lang="en-IN"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Invoice ${esc(invoiceNo)}</title>
+<title>${esc(docTitle)} ${esc(invoiceNo)}</title>
 <style>
   :root { font-family: ui-sans-serif, system-ui, sans-serif; color: #1f2937; }
   body { max-width: 760px; margin: 24px auto; padding: 0 20px; }
@@ -70,7 +73,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       <div class="muted">${esc(guest?.phone ?? "")}${guest?.city ? " · " + esc(guest.city) : ""}</div>
     </div>
     <div style="text-align:right">
-      <div class="muted">Invoice</div>
+      <div class="muted">${esc(docTitle)}</div>
       <div><strong>${esc(invoiceNo)}</strong></div>
       <div class="muted">${longDate(b.createdAt)}</div>
     </div>
@@ -99,7 +102,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   </table>
 
   ${b.amountPaid >= b.totalAmount ? '<p><span class="badge">PAID IN FULL</span></p>' : ""}
-  <p class="muted">This is a computer-generated invoice. ${b.property.cancellationPolicy ? "Cancellation policy: " + esc(b.property.cancellationPolicy) : ""}</p>
+  ${isProforma ? '<p class="muted"><strong>This is a proforma / quote</strong> — not a tax invoice. A tax invoice is issued once payment is recorded.</p>' : ""}
+  <p class="muted">This is a computer-generated ${esc(isProforma ? "quote" : "invoice")}. ${b.property.cancellationPolicy ? "Cancellation policy: " + esc(b.property.cancellationPolicy) : ""}</p>
 </body></html>`;
 
   return new Response(html, {

@@ -3,7 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
-import { createChannelAction, toggleChannelAction } from "@/lib/actions/channels";
+import {
+  createChannelAction,
+  toggleChannelAction,
+  updateChannelAction,
+} from "@/lib/actions/channels";
 
 export interface ChannelRow {
   id: string;
@@ -49,9 +53,17 @@ export function ChannelsManager({ channels }: Readonly<{ channels: ChannelRow[] 
             onChange={(e) => setName(e.target.value)}
           />
         </div>
-        <div className="field" style={{ width: 90 }}>
+        <div className="field" style={{ width: 130 }}>
           <label>Colour</label>
-          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              style={{ width: 40, height: 34, padding: 2 }}
+            />
+            <span className="text-xs tabular text-muted">{color.toUpperCase()}</span>
+          </div>
         </div>
         <button className="btn btn-primary" disabled={pending || !name.trim()} onClick={add}>
           <Icon name="plus" className="icon-sm" /> Add
@@ -73,14 +85,25 @@ export function ChannelsManager({ channels }: Readonly<{ channels: ChannelRow[] 
               <tr key={c.id}>
                 <td>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                    <span
+                    <input
+                      type="color"
+                      value={c.color}
+                      title="Click to change this channel's colour"
+                      disabled={pending}
                       style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: 3,
-                        background: c.color,
-                        display: "inline-block",
+                        width: 22,
+                        height: 22,
+                        padding: 0,
+                        border: "1px solid var(--line)",
+                        borderRadius: 4,
+                        cursor: "pointer",
                       }}
+                      onChange={(e) =>
+                        start(async () => {
+                          await updateChannelAction(c.id, { name: c.name, color: e.target.value });
+                          router.refresh();
+                        })
+                      }
                     />
                     {c.name}
                   </span>

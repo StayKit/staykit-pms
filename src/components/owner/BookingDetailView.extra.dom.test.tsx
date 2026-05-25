@@ -53,8 +53,13 @@ const data: BookingDetailData = {
   comms: [],
   audit: [],
   notes: null,
+  arrivalTime: null,
+  guestRequests: null,
+  cancelRequest: null,
   move: null,
   onlineEnabled: false,
+  templates: [],
+  guestHasEmail: false,
 };
 
 describe("BookingDetailView foreign-national badge", () => {

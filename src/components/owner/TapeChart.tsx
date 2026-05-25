@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { setActivePropertyAction } from "@/lib/actions/property";
+import { createMaintenanceBlockAction } from "@/lib/actions/rateplans";
 
 const CELL_W = 76;
 const ROW_H = 56;
@@ -58,8 +59,40 @@ export function TapeChart({
   const router = useRouter();
   const [view, setView] = useState<"week" | "14" | "month">("14");
   const [offset, setOffset] = useState(0); // weeks of paging
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
+  // Empty set = show everything; otherwise an allow-list.
+  const [typeFilter, setTypeFilter] = useState<Set<string>>(new Set());
+  const [stateFilter, setStateFilter] = useState<Set<string>>(new Set());
   const days = view === "week" ? 7 : view === "month" ? 30 : 14;
   const startOffset = -2 + offset * days;
+
+  const allRooms = useMemo(
+    () =>
+      groups.flatMap((g) =>
+        g.rooms.map((r) => ({ id: r.id, label: `${r.number} — ${r.name} (${g.typeName})` })),
+      ),
+    [groups],
+  );
+  const stateOptions = useMemo(
+    () => [...new Set(bookings.filter((b) => !b.isBlock).map((b) => b.state))],
+    [bookings],
+  );
+
+  const visibleGroups =
+    typeFilter.size === 0 ? groups : groups.filter((g) => typeFilter.has(g.typeId));
+  const visibleBookings =
+    stateFilter.size === 0
+      ? bookings
+      : bookings.filter((b) => b.isBlock || stateFilter.has(b.state));
+  const filterCount = typeFilter.size + stateFilter.size;
+
+  function toggleIn(set: Set<string>, value: string, apply: (s: Set<string>) => void) {
+    const next = new Set(set);
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+    apply(next);
+  }
 
   const anchor = useMemo(() => new Date(anchorIso + "T00:00:00.000Z"), [anchorIso]);
   const todayMs = anchor.getTime();
@@ -90,15 +123,76 @@ export function TapeChart({
           <h2 style={{ fontSize: 22 }}>Calendar</h2>
           <div className="sub">Tap a cell to book. Click a bar to open the booking.</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn">
+        <div style={{ display: "flex", gap: 8, position: "relative" }}>
+          <button
+            className={"btn" + (filterCount ? " btn-primary" : "")}
+            onClick={() => setFilterOpen((o) => !o)}
+            aria-expanded={filterOpen}
+          >
             <Icon name="filter" className="icon-sm" /> Filters
+            {filterCount ? ` (${filterCount})` : ""}
           </button>
-          <button className="btn">
+          <button className="btn" onClick={() => setBlockOpen(true)}>
             <Icon name="lock" className="icon-sm" /> Block dates
           </button>
+
+          {filterOpen && (
+            <div className="filter-pop">
+              <div className="filter-pop-head">
+                <span>Filters</span>
+                {filterCount > 0 && (
+                  <button
+                    className="link-btn"
+                    onClick={() => {
+                      setTypeFilter(new Set());
+                      setStateFilter(new Set());
+                    }}
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+              <div className="filter-pop-group">Room type</div>
+              {groups.map((g) => (
+                <label key={g.typeId} className="filter-pop-item">
+                  <input
+                    type="checkbox"
+                    checked={typeFilter.has(g.typeId)}
+                    onChange={() => toggleIn(typeFilter, g.typeId, setTypeFilter)}
+                  />
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: g.color }} />
+                  {g.typeName}
+                </label>
+              ))}
+              {stateOptions.length > 0 && <div className="filter-pop-group">Status</div>}
+              {stateOptions.map((s) => (
+                <label key={s} className="filter-pop-item">
+                  <input
+                    type="checkbox"
+                    checked={stateFilter.has(s)}
+                    onChange={() => toggleIn(stateFilter, s, setStateFilter)}
+                  />
+                  <span className={"legend-swatch bb-" + s} />
+                  <span style={{ textTransform: "capitalize" }}>{s}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {blockOpen && (
+        <BlockDatesModal
+          propertyId={activePropertyId}
+          rooms={allRooms}
+          anchorIso={anchorIso}
+          onClose={() => setBlockOpen(false)}
+          onDone={() => {
+            setBlockOpen(false);
+            router.refresh();
+          }}
+        />
+      )}
 
       <div className="tape-wrap">
         <div className="tape-toolbar">
@@ -202,7 +296,7 @@ export function TapeChart({
               </div>
             </div>
 
-            {groups.map((group) => (
+            {visibleGroups.map((group) => (
               <div key={group.typeId}>
                 <div
                   className="tape-room-type-row"
@@ -225,7 +319,7 @@ export function TapeChart({
                 </div>
 
                 {group.rooms.map((room) => {
-                  const roomBookings = bookings.filter((b) => b.roomId === room.id);
+                  const roomBookings = visibleBookings.filter((b) => b.roomId === room.id);
                   return (
                     <div
                       key={room.id}
@@ -361,4 +455,108 @@ function fmt(d: Date, withYear = false): string {
     year: withYear ? "numeric" : undefined,
     timeZone: "UTC",
   });
+}
+
+function addIsoDays(iso: string, n: number): string {
+  const d = new Date(iso + "T00:00:00.000Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function BlockDatesModal({
+  propertyId,
+  rooms,
+  anchorIso,
+  onClose,
+  onDone,
+}: Readonly<{
+  propertyId: string;
+  rooms: { id: string; label: string }[];
+  anchorIso: string;
+  onClose: () => void;
+  onDone: () => void;
+}>) {
+  const [roomId, setRoomId] = useState(rooms[0]?.id ?? "");
+  const [startDate, setStartDate] = useState(anchorIso);
+  const [endDate, setEndDate] = useState(addIsoDays(anchorIso, 1));
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  function submit() {
+    if (!roomId) return setError("Pick a room to block.");
+    if (!reason.trim()) return setError("Add a reason (e.g. deep clean, repairs).");
+    setError(null);
+    start(async () => {
+      const res = await createMaintenanceBlockAction(propertyId, {
+        roomId,
+        startDate,
+        endDate,
+        reason: reason.trim(),
+      });
+      if (res.ok) onDone();
+      else setError(res.message ?? "Could not create the block.");
+    });
+  }
+
+  return (
+    <>
+      <button className="scrim open" aria-label="Close" onClick={onClose} />
+      <div className="modal open" role="dialog" aria-label="Block dates">
+        <div className="modal-header">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <h3>Block dates</h3>
+              <div className="sub">Hold a room for maintenance, cleaning, or owner use.</div>
+            </div>
+            <button className="icon-btn" onClick={onClose} aria-label="Close">
+              <Icon name="x" className="icon-sm" />
+            </button>
+          </div>
+        </div>
+        <div className="modal-body">
+          {error && <div className="error-text">{error}</div>}
+          <div className="field">
+            <label>Room</label>
+            <select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field-row">
+            <div className="field">
+              <label>From</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>To</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+          </div>
+          <div className="field">
+            <label>Reason</label>
+            <input
+              placeholder="e.g. Deep clean, plumbing repair"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </div>
+          <div className="text-xs text-muted">
+            Blocked nights can&apos;t overlap an existing booking for the room.
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn" onClick={onClose} disabled={pending}>
+            Cancel
+          </button>
+          <button className="btn btn-primary" onClick={submit} disabled={pending}>
+            <Icon name="lock" className="icon-sm" /> {pending ? "Blocking…" : "Block room"}
+          </button>
+        </div>
+      </div>
+    </>
+  );
 }

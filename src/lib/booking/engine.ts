@@ -11,6 +11,26 @@ import { eachNight, nightsBetween, utcMidnight } from "../dates";
 import { quoteStay, type RatePlanLike } from "./rates";
 import { generateBookingRef } from "./ref";
 import { writeAudit } from "../audit";
+import { normalizePhone } from "../phone";
+import { enqueueNotification } from "../notify/dispatch";
+
+/** Build the template scope shared by booking-lifecycle notifications. */
+function bookingScope(
+  booking: { ref: string; checkIn: Date; checkOut: Date; totalAmount: number; amountPaid: number },
+  guest: { name: string },
+  property: { name: string; checkInTime: string },
+): Record<string, unknown> {
+  return {
+    guest: { name: guest.name },
+    booking: {
+      ref: booking.ref,
+      checkIn: booking.checkIn.toISOString(),
+      checkOut: booking.checkOut.toISOString(),
+    },
+    property: { name: property.name, checkInTime: property.checkInTime },
+    amount: { due: booking.totalAmount - booking.amountPaid, total: booking.totalAmount },
+  };
+}
 
 export class DoubleBookingError extends Error {
   readonly code = "DOUBLE_BOOKING";
@@ -83,13 +103,16 @@ export async function createBooking(input: CreateBookingInput) {
   );
 
   const ref = generateBookingRef();
+  // The phone is the guest's identity, so normalise it first — "+91-98765 43210" and
+  // "9876543210" must resolve to the same record rather than creating a duplicate.
+  const phone = normalizePhone(input.guest.phone);
 
   try {
     const booking = await prisma.$transaction(
       async (tx) => {
         // 1. Upsert the guest (unique per owner+phone).
         const guest = await tx.guest.upsert({
-          where: { ownerId_phone: { ownerId: input.ownerId, phone: input.guest.phone } },
+          where: { ownerId_phone: { ownerId: input.ownerId, phone } },
           update: {
             name: input.guest.name,
             email: input.guest.email ?? undefined,
@@ -98,7 +121,7 @@ export async function createBooking(input: CreateBookingInput) {
           create: {
             ownerId: input.ownerId,
             name: input.guest.name,
-            phone: input.guest.phone,
+            phone,
             email: input.guest.email ?? null,
             isForeign: input.guest.isForeign ?? false,
           },
@@ -150,6 +173,16 @@ export async function createBooking(input: CreateBookingInput) {
       entityId: booking.id,
       summary: `created booking ${booking.ref} for ${input.guest.name}`,
     });
+
+    // Fire the guest's booking notification (best-effort; no-op when no templates exist).
+    await enqueueNotification({
+      ownerId: input.ownerId,
+      triggerKey: booking.status === "TENTATIVE" ? "BOOKING_TENTATIVE" : "BOOKING_CONFIRMED",
+      to: phone,
+      email: input.guest.email ?? null,
+      bookingId: booking.id,
+      scope: bookingScope(booking, { name: input.guest.name }, room.property),
+    }).catch(() => {});
 
     return booking;
   } catch (e) {
@@ -290,7 +323,11 @@ export async function checkOutBooking(bookingId: string, ownerId: string, actorN
   const b = await prisma.booking.update({
     where: { id: bookingId },
     data: { status: "CHECKED_OUT", checkedOutAt: new Date() },
-    include: { rooms: true },
+    include: {
+      rooms: true,
+      property: true,
+      guests: { where: { isPrimary: true }, include: { guest: true } },
+    },
   });
   // Free rooms get marked dirty for housekeeping.
   const roomIds = [...new Set(b.rooms.map((r) => r.roomId))];
@@ -307,6 +344,17 @@ export async function checkOutBooking(bookingId: string, ownerId: string, actorN
     entityId: bookingId,
     summary: `checked out booking ${b.ref}`,
   });
+  const g = b.guests[0]?.guest;
+  if (g) {
+    await enqueueNotification({
+      ownerId,
+      triggerKey: "POST_CHECKOUT_THANKS",
+      to: g.phone,
+      email: g.email,
+      bookingId,
+      scope: bookingScope(b, g, b.property),
+    }).catch(() => {});
+  }
   return b;
 }
 
@@ -320,6 +368,10 @@ export async function cancelBooking(
     const updated = await tx.booking.update({
       where: { id: bookingId },
       data: { status: "CANCELLED", cancelledAt: new Date(), cancellationReason: reason },
+      include: {
+        property: true,
+        guests: { where: { isPrimary: true }, include: { guest: true } },
+      },
     });
     // Releasing the nights frees the room for rebooking.
     await tx.bookingRoom.deleteMany({ where: { bookingId } });
@@ -334,5 +386,16 @@ export async function cancelBooking(
     entityId: bookingId,
     summary: `cancelled booking ${b.ref} (${reason})`,
   });
+  const g = b.guests[0]?.guest;
+  if (g) {
+    await enqueueNotification({
+      ownerId,
+      triggerKey: "CANCELLED",
+      to: g.phone,
+      email: g.email,
+      bookingId,
+      scope: bookingScope(b, g, b.property),
+    }).catch(() => {});
+  }
   return b;
 }

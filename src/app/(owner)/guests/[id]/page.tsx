@@ -7,6 +7,7 @@ import { Avatar, StatusPill, deriveState } from "@/components/ui";
 import { shortDate } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { GuestActions } from "@/components/owner/GuestActions";
+import { GuestEditForm } from "@/components/owner/GuestEditForm";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,17 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
             <div className="text-sm">{guest.notes}</div>
           </div>
         )}
+        <div style={{ marginTop: 16 }}>
+          <GuestEditForm
+            guestId={guest.id}
+            initial={{
+              name: guest.name,
+              email: guest.email ?? "",
+              city: guest.city ?? "",
+              notes: guest.notes ?? "",
+            }}
+          />
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, marginTop: 16 }}>

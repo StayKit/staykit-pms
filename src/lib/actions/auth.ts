@@ -3,19 +3,13 @@
 import { prisma } from "../db";
 import { requestOtp, verifyOtp, RateLimitError } from "../auth/otp";
 import { createStaffSession, createGuestSession, destroySession } from "../auth/session";
+import { normalizePhone } from "../phone";
 
 export interface OtpRequestResult {
   ok: boolean;
   requestId?: string;
   devCode?: string;
   message?: string;
-}
-
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/[^\d+]/g, "");
-  if (digits.startsWith("+")) return digits;
-  if (digits.length === 10) return "+91" + digits;
-  return "+" + digits.replace(/^0+/, "");
 }
 
 export async function requestStaffOtp(phoneRaw: string): Promise<OtpRequestResult> {

@@ -17,6 +17,7 @@ export const ICONS: Record<string, string> = {
   check: "M5 12l5 5L20 7",
   "chevron-right": "M9 18l6-6-6-6",
   "chevron-left": "M15 18l-9-6 9-6",
+  "chevron-up": "M6 15l6-6 6 6",
   "chevron-down": "M6 9l6 6 6-6",
   "arrow-right": "M5 12h14M13 5l7 7-7 7",
   "arrow-up-right": "M7 17L17 7M7 7h10v10",

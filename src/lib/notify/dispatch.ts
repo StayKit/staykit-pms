@@ -25,10 +25,24 @@ export type TriggerKey =
 export interface EnqueueInput {
   ownerId: string;
   triggerKey: TriggerKey;
+  /** Phone destination for SMS/WhatsApp templates. */
   to: string;
+  /**
+   * Email destination for EMAIL templates. If the caller specifies it (even as null),
+   * EMAIL templates route here and are skipped when it's empty. If the field is omitted
+   * entirely, EMAIL falls back to `to` (back-compat for callers that pass one contact).
+   */
+  email?: string | null;
   bookingId?: string;
   scope: Record<string, unknown>;
   channelsOverride?: NotificationChannel[];
+}
+
+/** Pick the right destination for a channel: email templates go to the email, SMS/WhatsApp to the phone. */
+function destFor(channel: NotificationChannel, input: EnqueueInput): string {
+  if (channel !== "EMAIL") return (input.to ?? "").trim();
+  if (input.email === undefined) return (input.to ?? "").trim(); // caller didn't separate contacts
+  return (input.email ?? "").trim();
 }
 
 export async function enqueueNotification(input: EnqueueInput) {
@@ -44,12 +58,14 @@ export async function enqueueNotification(input: EnqueueInput) {
   const logs = [];
   for (const t of templates) {
     if (input.channelsOverride && !input.channelsOverride.includes(t.channel)) continue;
+    const dest = destFor(t.channel, input);
+    if (!dest) continue; // no contact for this channel (e.g. EMAIL template, guest has no email)
     const delay = delayByTemplate.get(t.id) ?? 0;
     const log = await prisma.notificationLog.create({
       data: {
         bookingId: input.bookingId,
         channel: t.channel,
-        to: input.to,
+        to: dest,
         templateId: t.id,
         triggerKey: input.triggerKey,
         status: "QUEUED",
@@ -135,8 +151,15 @@ export async function drainNotifications(limit = 10): Promise<{ sent: number; fa
   return { sent, failed };
 }
 
-/** Render + send one template immediately (used by tests and the test-send button). */
-export async function sendNow(templateId: string, to: string, scope: Record<string, unknown>) {
+/** Render + send one template immediately (used by tests, the test-send button, and
+ * the manual "message this guest" action). Pass `bookingId` to attach the log to a
+ * booking so it shows in that booking's Messages timeline. */
+export async function sendNow(
+  templateId: string,
+  to: string,
+  scope: Record<string, unknown>,
+  opts: { bookingId?: string } = {},
+) {
   const t = await prisma.notificationTemplate.findUnique({ where: { id: templateId } });
   if (!t) throw new Error("Template not found");
   const body = renderTemplate(t.body, scope);
@@ -151,6 +174,7 @@ export async function sendNow(templateId: string, to: string, scope: Record<stri
   });
   await prisma.notificationLog.create({
     data: {
+      bookingId: opts.bookingId ?? null,
       channel: t.channel,
       to,
       templateId: t.id,

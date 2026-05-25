@@ -207,7 +207,11 @@ model Booking {
   taxAmount          Int // paise
   totalAmount        Int // paise
   amountPaid         Int               @default(0)
-  notes              String?
+  notes              String? // staff-internal
+  arrivalTime        String? // guest-provided ETA, free text e.g. "around 6 PM"
+  guestRequests      String? // special requests entered by the guest in the portal
+  cancelRequestedAt  DateTime? // guest asked to cancel; staff still action it
+  cancelRequestReason String?
   cancellationReason String?
   cancelledAt        DateTime?
   checkedInAt        DateTime?

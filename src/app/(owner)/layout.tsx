@@ -14,7 +14,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   const property = properties.find((p) => p.id === activeId);
   if (!property) redirect("/signin");
 
-  const [rooms, channels, onlineEnabled] = await Promise.all([
+  const [rooms, channels, onlineEnabled, cancelRequests] = await Promise.all([
     prisma.room.findMany({
       where: { propertyId: property.id, active: true },
       include: { roomType: true },
@@ -22,6 +22,13 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
     }),
     prisma.channelSource.findMany({ where: { ownerId: ctx.ownerId, active: true } }),
     onlinePaymentsEnabled(),
+    prisma.booking.count({
+      where: {
+        property: { ownerId: ctx.ownerId },
+        cancelRequestedAt: { not: null },
+        status: { notIn: ["CANCELLED", "CHECKED_OUT"] },
+      },
+    }),
   ]);
 
   return (
@@ -31,6 +38,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
       properties={properties}
       demo={ctx.demo}
       onlineEnabled={onlineEnabled}
+      badges={{ "/bookings": cancelRequests }}
       rooms={rooms.map((r) => ({
         id: r.id,
         label: `${r.number} — ${r.name} (${r.roomType.name})`,

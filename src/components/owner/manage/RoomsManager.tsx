@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import {
@@ -25,6 +26,7 @@ export interface RoomRow {
   typeName: string;
   active: boolean;
   cleanliness: string;
+  occupant: { guestName: string; bookingId: string; checkedIn: boolean } | null;
 }
 
 const CLEAN_LABEL: Record<string, string> = {
@@ -195,6 +197,7 @@ export function RoomsManager({
             <tr>
               <th>Room</th>
               <th>Type</th>
+              <th>Tonight</th>
               <th>Housekeeping</th>
               <th>Status</th>
               <th style={{ width: 40 }}></th>
@@ -208,6 +211,21 @@ export function RoomsManager({
                   {r.name}
                 </td>
                 <td className="text-sm">{r.typeName}</td>
+                <td>
+                  {r.occupant ? (
+                    <Link
+                      href={`/bookings/${r.occupant.bookingId}`}
+                      className="pill pill-brand"
+                      style={{ textDecoration: "none" }}
+                      title="View booking"
+                    >
+                      <Icon name={r.occupant.checkedIn ? "key" : "user"} className="icon-sm" />
+                      {r.occupant.guestName}
+                    </Link>
+                  ) : (
+                    <span className="pill pill-neutral">Vacant</span>
+                  )}
+                </td>
                 <td>
                   <select
                     value={r.cleanliness}
@@ -251,7 +269,7 @@ export function RoomsManager({
             ))}
             {rooms.length === 0 && (
               <tr>
-                <td colSpan={5} className="empty">
+                <td colSpan={6} className="empty">
                   No rooms yet.
                 </td>
               </tr>

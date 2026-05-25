@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { BrandGlyph } from "@/components/BrandGlyph";
 import { NAV, titleForPath } from "./nav";
 import { QuickAdd, type QuickAddChannel, type QuickAddRoom } from "./QuickAdd";
 import { PropertySwitcher } from "./PropertySwitcher";
+import { KeyboardShortcuts } from "./KeyboardShortcuts";
 import type { PropertyOption } from "@/lib/property/active";
 
 export function OwnerShell({
@@ -18,6 +20,7 @@ export function OwnerShell({
   channels,
   demo,
   onlineEnabled = false,
+  badges = {},
 }: {
   children: React.ReactNode;
   user: { name: string; role: string };
@@ -27,9 +30,13 @@ export function OwnerShell({
   channels: QuickAddChannel[];
   demo: boolean;
   onlineEnabled?: boolean;
+  badges?: Record<string, number>;
 }) {
   const path = usePathname();
   const title = titleForPath(path);
+  const [navOpen, setNavOpen] = useState(false);
+  // Close the mobile nav drawer whenever the route changes.
+  useEffect(() => setNavOpen(false), [path]);
   const workspace = NAV.filter((n) => n.section === "workspace");
   const advanced = NAV.filter((n) => n.section === "advanced");
   // The topbar lives only on the Dashboard; every other page carries its own heading, so elsewhere
@@ -39,16 +46,43 @@ export function OwnerShell({
 
   const navItem = (n: (typeof NAV)[number]) => {
     const active = path === n.href || path.startsWith(n.href + "/");
+    const badge = badges[n.href] ?? 0;
     return (
       <Link key={n.href} href={n.href} className={"nav-item " + (active ? "active" : "")}>
         <Icon name={n.icon} className="icon" />
         <span>{n.label}</span>
+        {badge > 0 && <span className="nav-badge">{badge}</span>}
       </Link>
     );
   };
 
   return (
-    <div className="app">
+    <div className={"app" + (navOpen ? " nav-open" : "")}>
+      <div className="mobile-bar">
+        <button
+          className="icon-btn"
+          aria-label="Open menu"
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen(true)}
+        >
+          <Icon name="menu" className="icon" />
+        </button>
+        <div className="mobile-brand">
+          <div className="mark">
+            <BrandGlyph />
+          </div>
+          <span>StayKit</span>
+        </div>
+        <Link className="icon-btn" href="?new=1" aria-label="New booking">
+          <Icon name="plus" className="icon" />
+        </Link>
+      </div>
+      <button
+        className="nav-scrim"
+        aria-label="Close menu"
+        tabIndex={navOpen ? 0 : -1}
+        onClick={() => setNavOpen(false)}
+      />
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="mark">
@@ -132,6 +166,7 @@ export function OwnerShell({
         channels={channels}
         onlineEnabled={onlineEnabled}
       />
+      <KeyboardShortcuts />
     </div>
   );
 }
