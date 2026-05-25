@@ -15,12 +15,17 @@ vi.mock("next/link", () => ({
   ),
 }));
 vi.mock("@/lib/actions/bookings", () => ({ createBookingAction: vi.fn() }));
+vi.mock("@/lib/actions/property", () => ({ setActivePropertyAction: vi.fn() }));
 
 import { OwnerShell } from "./OwnerShell";
 
 const props = {
   user: { name: "Priya R.", role: "OWNER" },
   property: { id: "p1", name: "Coorg Coffee Cottage" },
+  properties: [
+    { id: "p1", name: "Coorg Coffee Cottage" },
+    { id: "p2", name: "Backwaters Verandah" },
+  ],
   rooms: [{ id: "r1", label: "101 — Hibiscus (Deluxe)", baseRateRupees: 6300 }],
   channels: [{ key: "direct", name: "Direct" }],
   demo: true,

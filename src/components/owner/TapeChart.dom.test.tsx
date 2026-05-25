@@ -1,8 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+const { push, refresh, setActiveProperty } = vi.hoisted(() => ({
+  push: vi.fn(),
+  refresh: vi.fn(),
+  setActiveProperty: vi.fn(() => Promise.resolve()),
+}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));
+vi.mock("@/lib/actions/property", () => ({ setActivePropertyAction: setActiveProperty }));
 
 import { TapeChart, type TapeGroup, type TapeBooking } from "./TapeChart";
 
@@ -83,7 +88,7 @@ describe("TapeChart", () => {
   it("switches the active property via the chips", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "Backwaters" }));
-    expect(push).toHaveBeenCalledWith("/calendar?property=p2");
+    expect(setActiveProperty).toHaveBeenCalledWith("p2");
   });
 
   it("starts a quick-add when an empty cell is clicked", () => {

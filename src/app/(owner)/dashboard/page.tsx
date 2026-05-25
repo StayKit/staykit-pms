@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
+import { resolveActiveProperty } from "@/lib/property/active";
 import { today, addDays, longDate, weekday } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { Icon } from "@/components/Icon";
@@ -10,8 +11,9 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const ctx = (await getAppContext())!;
+  const { activeId } = await resolveActiveProperty(ctx.ownerId);
   const property = (await prisma.property.findFirst({
-    where: { ownerId: ctx.ownerId, active: true },
+    where: { id: activeId ?? undefined, ownerId: ctx.ownerId, active: true },
     orderBy: { createdAt: "asc" },
     include: { _count: { select: { rooms: true } } },
   }))!;

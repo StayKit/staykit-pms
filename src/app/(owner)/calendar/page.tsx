@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
+import { resolveActiveProperty } from "@/lib/property/active";
 import { today, ymd, nightsBetween } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { deriveState } from "@/components/ui";
@@ -7,19 +8,11 @@ import { TapeChart, type TapeGroup, type TapeBooking } from "@/components/owner/
 
 export const dynamic = "force-dynamic";
 
-export default async function CalendarPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ property?: string }>;
-}) {
+export default async function CalendarPage() {
   const ctx = (await getAppContext())!;
-  const { property: propParam } = await searchParams;
 
-  const properties = await prisma.property.findMany({
-    where: { ownerId: ctx.ownerId, active: true },
-    orderBy: { createdAt: "asc" },
-  });
-  const active = properties.find((p) => p.id === propParam) ?? properties[0];
+  const { properties, activeId } = await resolveActiveProperty(ctx.ownerId);
+  const active = properties.find((p) => p.id === activeId) ?? properties[0];
 
   const [roomTypes, bookings, blocks] = await Promise.all([
     prisma.roomType.findMany({

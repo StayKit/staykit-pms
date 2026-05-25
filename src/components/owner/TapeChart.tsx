@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { setActivePropertyAction } from "@/lib/actions/property";
 
 const CELL_W = 76;
 const ROW_H = 56;
@@ -106,7 +107,11 @@ export function TapeChart({
               <button
                 key={p.id}
                 className={"chip" + (p.id === activePropertyId ? " selected" : "")}
-                onClick={() => router.push(`/calendar?property=${p.id}`)}
+                onClick={async () => {
+                  if (p.id === activePropertyId) return;
+                  await setActivePropertyAction(p.id);
+                  router.refresh();
+                }}
               >
                 {p.name}
               </button>

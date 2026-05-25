@@ -21,6 +21,9 @@ vi.mock("next/link", () => ({
 }));
 vi.mock("@/lib/auth/context", () => ({ getAppContext: vi.fn(), requireContext: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ getGuestSession: vi.fn() }));
+// No request scope in RSC unit tests: an empty cookie jar makes resolveActiveProperty fall back to
+// the owner's first property — the same property these tests asserted against before the switcher.
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 
 import { getAppContext } from "@/lib/auth/context";
 import { getGuestSession } from "@/lib/auth/session";
@@ -241,12 +244,11 @@ describe("owner pages", () => {
     expect(html).toContain("Nothing on the books");
   });
 
-  it("calendar renders the tape chart for the active and a chosen property", async () => {
+  it("calendar renders the tape chart for the active property", async () => {
     const { default: Page } = await load("./(owner)/calendar/page");
-    expect(await renderRSC(Page({ searchParams: Promise.resolve({}) }))).toContain("Calendar");
-    expect(
-      await renderRSC(Page({ searchParams: Promise.resolve({ property: fx.property.id }) })),
-    ).toContain("Deluxe");
+    const html = await renderRSC(Page());
+    expect(html).toContain("Calendar");
+    expect(html).toContain("Deluxe");
   });
 
   it("bookings list renders rows and supports every filter", async () => {
@@ -636,9 +638,7 @@ describe("page edge-case branches", () => {
         rooms: { create: { roomId: r4.id, date: today(), rateApplied: 0 } },
       },
     });
-    const html = await renderRSC(
-      (await load("./(owner)/calendar/page")).default({ searchParams: Promise.resolve({}) }),
-    );
+    const html = await renderRSC((await load("./(owner)/calendar/page")).default());
     expect(html).toContain("Guest");
     expect(html).not.toContain("SK-NOROOM");
   });
