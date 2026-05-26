@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
@@ -7,6 +6,7 @@ import { today, addDays, longDate } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { Icon } from "@/components/Icon";
 import { Avatar, ChannelChip, deriveState, StatusPill } from "@/components/ui";
+import { BookingLink } from "@/components/owner/BookingLink";
 
 export const dynamic = "force-dynamic";
 
@@ -172,7 +172,7 @@ export default async function OverviewPage() {
               const g = b.guests[0]?.guest;
               const room = b.rooms[0]?.room;
               return (
-                <Link key={b.id} href={`/bookings/${b.id}`} className="arrivals-row">
+                <BookingLink key={b.id} id={b.id} className="arrivals-row">
                   {g && <Avatar name={g.name} id={g.id} />}
                   <div style={{ minWidth: 0 }}>
                     <div className="name">{g?.name ?? "Guest"}</div>
@@ -185,7 +185,7 @@ export default async function OverviewPage() {
                   <div className="actions">
                     <StatusPill state={deriveState(b)} />
                   </div>
-                </Link>
+                </BookingLink>
               );
             })
           )}

@@ -6,6 +6,7 @@ import { inr } from "@/lib/money";
 import { Icon } from "@/components/Icon";
 import { Avatar, ChannelChip, StatusPill, deriveState } from "@/components/ui";
 import { BookingsFilters } from "@/components/owner/BookingsFilters";
+import { BookingLink } from "@/components/owner/BookingLink";
 import { Pagination } from "@/components/owner/Pagination";
 import { queryBookingIds, SORT_KEYS, type SortKey } from "@/lib/booking/list";
 
@@ -151,11 +152,7 @@ export default async function BookingsPage({
                 return (
                   <tr key={b.id} style={{ cursor: "pointer" }}>
                     <td>
-                      <Link
-                        href={`/bookings/${b.id}`}
-                        className="guest-cell"
-                        style={{ color: "inherit" }}
-                      >
+                      <BookingLink id={b.id} className="guest-cell" style={{ color: "inherit" }}>
                         {g && <Avatar name={g.name} id={g.id} size={32} />}
                         <div>
                           <div className="name">
@@ -170,7 +167,7 @@ export default async function BookingsPage({
                           </div>
                           <div className="sub">{g?.phone}</div>
                         </div>
-                      </Link>
+                      </BookingLink>
                     </td>
                     <td>
                       <div style={{ fontWeight: 550, fontSize: 13 }}>
@@ -209,9 +206,9 @@ export default async function BookingsPage({
                       )}
                     </td>
                     <td>
-                      <Link className="icon-btn" href={`/bookings/${b.id}`}>
+                      <BookingLink id={b.id} className="icon-btn">
                         <Icon name="chevron-right" className="icon-sm" />
-                      </Link>
+                      </BookingLink>
                     </td>
                   </tr>
                 );

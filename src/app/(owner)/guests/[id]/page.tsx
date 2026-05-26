@@ -9,6 +9,7 @@ import { inr } from "@/lib/money";
 import { GuestActions } from "@/components/owner/GuestActions";
 import { GuestEditForm } from "@/components/owner/GuestEditForm";
 import { GuestCrmPanel } from "@/components/owner/GuestCrmPanel";
+import { BookingLink } from "@/components/owner/BookingLink";
 
 function parseTags(s: string): string[] {
   try {
@@ -127,9 +128,9 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
           <h4 style={{ marginTop: 0 }}>Stay history</h4>
           {stays.length === 0 && <div className="text-muted text-sm">No stays yet.</div>}
           {stays.map((b) => (
-            <Link
+            <BookingLink
               key={b.id}
-              href={`/bookings/${b.id}`}
+              id={b.id}
               className="timeline-row"
               style={{ textDecoration: "none", color: "inherit" }}
             >
@@ -143,7 +144,7 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
                 </div>
               </div>
               <StatusPill state={deriveState(b)} />
-            </Link>
+            </BookingLink>
           ))}
         </div>
 

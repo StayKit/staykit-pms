@@ -6,6 +6,7 @@ import { today, addDays, longDate, weekday } from "@/lib/dates";
 import { inr } from "@/lib/money";
 import { Icon } from "@/components/Icon";
 import { Avatar, ChannelChip, StatusPill, deriveState } from "@/components/ui";
+import { BookingLink } from "@/components/owner/BookingLink";
 
 export const dynamic = "force-dynamic";
 
@@ -204,7 +205,7 @@ export default async function DashboardPage() {
                 const room = b.rooms[0]?.room;
                 const state = deriveState(b);
                 return (
-                  <Link key={b.id} href={`/bookings/${b.id}`} className="arrivals-row">
+                  <BookingLink key={b.id} id={b.id} className="arrivals-row">
                     {g && <Avatar name={g.name} id={g.id} />}
                     <div style={{ minWidth: 0 }}>
                       <div
@@ -236,7 +237,7 @@ export default async function DashboardPage() {
                         <StatusPill state="paid">Paid</StatusPill>
                       )}
                     </div>
-                  </Link>
+                  </BookingLink>
                 );
               })
             )}

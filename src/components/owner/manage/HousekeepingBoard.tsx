@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Toast } from "@/components/Toast";
 import { setCleanlinessAction, assignHousekeeperAction } from "@/lib/actions/rooms";
+import { BookingLink } from "@/components/owner/BookingLink";
 
 export interface HousekeepingRoom {
   id: string;
@@ -86,14 +86,14 @@ export function HousekeepingBoard({
                 </td>
                 <td>
                   {r.occupant ? (
-                    <Link
-                      href={`/bookings/${r.occupant.bookingId}`}
+                    <BookingLink
+                      id={r.occupant.bookingId}
                       className="pill pill-brand"
                       style={{ textDecoration: "none" }}
                     >
                       <Icon name={r.occupant.checkedIn ? "key" : "user"} className="icon-sm" />
                       {r.occupant.guestName}
-                    </Link>
+                    </BookingLink>
                   ) : (
                     <span className="pill pill-neutral">Vacant</span>
                   )}

@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
 import { inr } from "@/lib/money";
+import { BookingLink } from "@/components/owner/BookingLink";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +80,7 @@ export default async function PaymentsReportPage() {
           {failed.map((r, i) => (
             <span key={r.id}>
               {i > 0 ? ", " : ""}
-              <Link href={`/bookings/${r.bookingId}`}>{r.booking.ref}</Link>
+              <BookingLink id={r.bookingId}>{r.booking.ref}</BookingLink>
             </span>
           ))}
         </div>
@@ -129,7 +129,7 @@ export default async function PaymentsReportPage() {
             {payments.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <Link href={`/bookings/${p.bookingId}`}>{p.booking.ref}</Link>
+                  <BookingLink id={p.bookingId}>{p.booking.ref}</BookingLink>
                 </td>
                 <td className="tabular">{inr(p.amount)}</td>
                 <td className="text-sm">{(p.method ?? "—").toUpperCase()}</td>
@@ -167,7 +167,7 @@ export default async function PaymentsReportPage() {
             {refunds.map((r) => (
               <tr key={r.id}>
                 <td>
-                  <Link href={`/bookings/${r.bookingId}`}>{r.booking.ref}</Link>
+                  <BookingLink id={r.bookingId}>{r.booking.ref}</BookingLink>
                 </td>
                 <td className="tabular">{inr(r.amount)}</td>
                 <td className="text-sm">{r.reason ?? "—"}</td>

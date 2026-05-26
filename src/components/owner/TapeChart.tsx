@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { setActivePropertyAction } from "@/lib/actions/property";
 import { createMaintenanceBlockAction } from "@/lib/actions/rateplans";
+import { useBookingSidebarOptional } from "@/components/owner/BookingSidebar";
 
 const CELL_W = 76;
 const ROW_H = 56;
@@ -57,6 +58,7 @@ export function TapeChart({
   activePropertyId: string;
 }) {
   const router = useRouter();
+  const sidebar = useBookingSidebarOptional();
   const [view, setView] = useState<"week" | "14" | "month">("14");
   const [offset, setOffset] = useState(0); // weeks of paging
   const [filterOpen, setFilterOpen] = useState(false);
@@ -110,7 +112,8 @@ export function TapeChart({
   const stripWidth = days * CELL_W;
 
   function openBooking(id: string) {
-    router.push(`/bookings/${id}`);
+    if (sidebar) sidebar.openBooking(id);
+    else router.push(`/bookings/${id}`);
   }
   function quickAdd(roomId: string, iso: string) {
     router.push(`?new=1&room=${roomId}&date=${iso}`);

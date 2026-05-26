@@ -4,6 +4,7 @@ import { getAppContext } from "@/lib/auth/context";
 import { inr } from "@/lib/money";
 import { longDate } from "@/lib/dates";
 import { Icon } from "@/components/Icon";
+import { BookingLink } from "@/components/owner/BookingLink";
 
 export const dynamic = "force-dynamic";
 
@@ -79,7 +80,7 @@ export default async function InvoiceRegisterPage() {
                 <td className="text-sm">{b.invoiceIssuedAt ? longDate(b.invoiceIssuedAt) : "—"}</td>
                 <td className="text-sm">{b.guests[0]?.guest.name ?? "Guest"}</td>
                 <td>
-                  <Link href={`/bookings/${b.id}`}>{b.ref}</Link>
+                  <BookingLink id={b.id}>{b.ref}</BookingLink>
                 </td>
                 <td className="tabular">{inr(b.subtotal)}</td>
                 <td className="tabular">{inr(b.taxAmount)}</td>

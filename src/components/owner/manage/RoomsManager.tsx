@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { Toast } from "@/components/Toast";
+import { BookingLink } from "@/components/owner/BookingLink";
 import {
   createRoomTypeAction,
   updateRoomTypeAction,
@@ -286,15 +286,15 @@ export function RoomsManager({
                   <td className="text-sm">{r.typeName}</td>
                   <td>
                     {r.occupant ? (
-                      <Link
-                        href={`/bookings/${r.occupant.bookingId}`}
+                      <BookingLink
+                        id={r.occupant.bookingId}
                         className="pill pill-brand"
                         style={{ textDecoration: "none" }}
                         title="View booking"
                       >
                         <Icon name={r.occupant.checkedIn ? "key" : "user"} className="icon-sm" />
                         {r.occupant.guestName}
-                      </Link>
+                      </BookingLink>
                     ) : (
                       <span className="pill pill-neutral">Vacant</span>
                     )}

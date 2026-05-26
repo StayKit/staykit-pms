@@ -1,13 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
-const { push, refresh, setActiveProperty } = vi.hoisted(() => ({
+const { push, refresh, setActiveProperty, openBooking } = vi.hoisted(() => ({
   push: vi.fn(),
   refresh: vi.fn(),
   setActiveProperty: vi.fn(() => Promise.resolve()),
+  openBooking: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));
 vi.mock("@/lib/actions/property", () => ({ setActivePropertyAction: setActiveProperty }));
+vi.mock("@/components/owner/BookingSidebar", () => ({
+  useBookingSidebar: () => ({ openBooking, closeBooking: vi.fn(), refreshBooking: vi.fn() }),
+  useBookingSidebarOptional: () => ({
+    openBooking,
+    closeBooking: vi.fn(),
+    refreshBooking: vi.fn(),
+  }),
+}));
 
 import { TapeChart, type TapeGroup, type TapeBooking } from "./TapeChart";
 
@@ -61,7 +70,10 @@ function setup() {
   );
 }
 
-beforeEach(() => push.mockClear());
+beforeEach(() => {
+  push.mockClear();
+  openBooking.mockClear();
+});
 
 describe("TapeChart", () => {
   it("renders room-type groups, room rows, bars and the legend", () => {
@@ -76,12 +88,13 @@ describe("TapeChart", () => {
   it("opens a booking when its bar is clicked", () => {
     setup();
     fireEvent.click(screen.getByText("Sameer"));
-    expect(push).toHaveBeenCalledWith("/bookings/b1");
+    expect(openBooking).toHaveBeenCalledWith("b1");
   });
 
   it("does not navigate when a maintenance block bar is clicked", () => {
     setup();
     fireEvent.click(screen.getByText("Blocked"));
+    expect(openBooking).not.toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
   });
 

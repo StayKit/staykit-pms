@@ -98,27 +98,52 @@ export interface BookingDetailData {
 
 type Tab = "stay" | "guest" | "payments" | "comms" | "audit";
 
-export function BookingDetailView({ data }: { data: BookingDetailData }) {
+export function BookingDetailView({
+  data,
+  inSidebar = false,
+  onRefresh,
+  onClose,
+}: Readonly<{
+  data: BookingDetailData;
+  /** When true, omit the outer `.page` chrome — host (sidebar) provides it. */
+  inSidebar?: boolean;
+  /** Called after a mutation when in sidebar mode (replaces router.refresh). */
+  onRefresh?: () => void;
+  /** Called when the user clicks the back/close button in sidebar mode. */
+  onClose?: () => void;
+}>) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("stay");
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
 
+  function refresh() {
+    if (inSidebar) onRefresh?.();
+    else router.refresh();
+  }
+
   function run(fn: () => Promise<{ ok: boolean; message?: string }>) {
     start(async () => {
       const res = await fn();
       if (res.message) setToast(res.message);
-      router.refresh();
+      refresh();
     });
   }
 
   const g = data.guest;
 
   return (
-    <div className="page" style={{ paddingTop: 16, maxWidth: 760 }}>
+    <div
+      className={inSidebar ? "" : "page"}
+      style={inSidebar ? undefined : { paddingTop: 16, maxWidth: 760 }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <button className="icon-btn" onClick={() => router.push("/bookings")} aria-label="Back">
-          <Icon name="chevron-left" className="icon-sm" />
+        <button
+          className="icon-btn"
+          onClick={() => (inSidebar ? onClose?.() : router.push("/bookings"))}
+          aria-label={inSidebar ? "Close" : "Back"}
+        >
+          <Icon name={inSidebar ? "x" : "chevron-left"} className="icon-sm" />
         </button>
         <div style={{ flex: 1 }}>
           <h2 style={{ fontSize: 20, margin: 0 }}>Booking {data.ref}</h2>

@@ -857,9 +857,14 @@ input, select, textarea { font: inherit; color: inherit; }
   flex-direction: column;
   transform: translateX(100%);
   transition: transform .28s cubic-bezier(.32,.72,.34,1);
+  visibility: hidden;
   box-shadow: -24px 0 80px -30px rgba(0,0,0,.25);
 }
-.sheet.open { transform: translateX(0); }
+.sheet.open { transform: translateX(0); visibility: visible; }
+
+/* Booking-detail variant: wider, host its own padding via BookingDetailView. */
+.sheet.booking-sheet { width: 820px; }
+.sheet.booking-sheet .sheet-body { padding: 18px 22px 28px; }
 
 .sheet-header {
   padding: 18px 22px 14px;

@@ -16,6 +16,9 @@ vi.mock("next/link", () => ({
 }));
 vi.mock("@/lib/actions/bookings", () => ({ createBookingAction: vi.fn() }));
 vi.mock("@/lib/actions/property", () => ({ setActivePropertyAction: vi.fn() }));
+vi.mock("@/lib/actions/booking-detail", () => ({
+  fetchBookingDetailAction: vi.fn(async () => ({ ok: false, message: "stub" })),
+}));
 
 import { OwnerShell } from "./OwnerShell";
 
