@@ -22,6 +22,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && npm run db:seed",
     "setup": "prisma generate && prisma db push && npm run db:seed",
+    "bootstrap-tenant": "node bin/bootstrap-tenant.mjs",
     "prepare": "husky"
   },
   "prisma": {

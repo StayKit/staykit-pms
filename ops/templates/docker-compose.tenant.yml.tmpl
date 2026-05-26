@@ -1,0 +1,61 @@
+# StayKit — per-tenant stack (app + Litestream sidecar).
+# Rendered by ops/bin/provision-tenant.sh for tenant "${SLUG}".
+#
+# The app container is *not* port-published. Caddy reaches it over the shared
+# `caddy` Docker network using the labels below (caddy-docker-proxy plugin).
+
+services:
+  app:
+    image: ${IMAGE}:${IMAGE_TAG}
+    container_name: staykit-${SLUG}
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    networks:
+      - tenant
+      - caddy
+    restart: unless-stopped
+    labels:
+      caddy: ${SLUG}.staykit.app
+      caddy.reverse_proxy: "{{upstreams 3000}}"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  litestream:
+    image: litestream/litestream:0.3
+    container_name: litestream-${SLUG}
+    # Restore the DB on first boot if a replica exists, then replicate forever.
+    command:
+      - sh
+      - -c
+      - |
+        if [ ! -f /data/staykit.db ]; then
+          litestream restore -if-replica-exists -config /etc/litestream.yml /data/staykit.db || true
+        fi
+        exec litestream replicate -config /etc/litestream.yml
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+      - ./litestream.yml:/etc/litestream.yml:ro
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - tenant
+    restart: unless-stopped
+
+networks:
+  tenant: {}
+  caddy:
+    external: true
+    name: caddy

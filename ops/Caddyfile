@@ -1,0 +1,44 @@
+# StayKit edge — one Caddy serves all tenants on *.staykit.app.
+#
+# Routing is driven by Docker labels via the caddy-docker-proxy plugin: each
+# tenant's compose file carries `caddy: <slug>.staykit.app` + a reverse_proxy
+# label, and Caddy auto-discovers it. There are NO per-tenant blocks in this
+# file — adding a tenant requires no Caddy reload.
+#
+# This file holds only:
+#   * Global options (admin API off, automatic_https, default TLS storage)
+#   * The wildcard TLS policy for *.staykit.app (DNS-01 via Cloudflare)
+#   * The apex landing (optional) and a default 404 for unknown hostnames.
+
+{
+    # Disable the admin API on a TCP port; caddy-docker-proxy talks over a
+    # Unix socket inside the container.
+    admin off
+
+    # Wildcard cert lives once on disk; tenants share it.
+    storage file_system /data
+}
+
+# Wildcard TLS for every *.staykit.app subdomain. DNS-01 with Cloudflare so we
+# never have to expose port 80 challenges per subdomain, and so we sidestep
+# Let's Encrypt's per-domain cert rate limit entirely.
+*.staykit.app {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+        resolvers 1.1.1.1
+    }
+    # Actual upstream resolution is contributed by tenant containers' Docker
+    # labels (caddy-docker-proxy merges them into this site block at runtime).
+    # If no label matches the Host, fall through to the 404 below.
+    @nomatch not host *.staykit.app
+    respond @nomatch "Tenant not found" 404
+}
+
+# Apex landing — optional static "marketing" site. Replace with reverse_proxy
+# to a marketing container, or remove this block if you redirect at the DNS host.
+staykit.app, www.staykit.app {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+    }
+    respond "StayKit" 200
+}

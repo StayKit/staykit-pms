@@ -1,0 +1,48 @@
+# StayKit edge — Caddy + caddy-docker-proxy.
+#
+# Run this once on the VPS:
+#   docker network create caddy
+#   docker compose -f /srv/staykit/shared/docker-compose.caddy.yml up -d
+#
+# It binds :80 and :443 on the host, terminates TLS with a wildcard cert for
+# *.staykit.app via the Cloudflare DNS plugin, and reverse-proxies to tenant
+# containers based on their `caddy: <slug>.staykit.app` labels.
+#
+# Requires a `CF_API_TOKEN` (DNS:Edit scoped to the staykit.app zone) in the
+# .env file that sits next to this compose file.
+
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:2.10-alpine
+    container_name: staykit-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      # caddy-docker-proxy looks at labels on containers inside this network.
+      CADDY_DOCKER_NETWORK: caddy
+      CADDY_INGRESS_NETWORKS: caddy
+      # The Cloudflare token used by the DNS-01 challenge — keep in shared/.env.
+      CF_API_TOKEN: ${CF_API_TOKEN:?Set CF_API_TOKEN in /srv/staykit/shared/.env}
+    env_file:
+      - .env
+    volumes:
+      # Docker socket so caddy-docker-proxy can watch label changes.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Persisted ACME state — survives container restarts so we don't churn certs.
+      - caddy-data:/data
+      - caddy-config:/config
+      # The Caddyfile (read-only).
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - caddy
+
+networks:
+  caddy:
+    external: true # `docker network create caddy` once, ahead of time
+
+volumes:
+  caddy-data:
+  caddy-config:

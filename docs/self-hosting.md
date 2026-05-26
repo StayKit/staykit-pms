@@ -111,3 +111,10 @@ with DPDP expectations. Run a monthly restore drill.
 - **Railway** — mount a persistent volume.
 - **Vercel** — not recommended as the primary host (no persistent disk for SQLite). Use Turso/libSQL
   or a separate worker container if you must.
+
+## Multi-tenant (subdomain-per-tenant)
+
+Running StayKit as a SaaS where each customer gets `<slug>.staykit.app`? See
+[multi-tenant-hosting.md](./multi-tenant-hosting.md) for the full topology:
+one Caddy edge + one isolated container/SQLite/uploads volume per tenant on a
+single VPS, with a one-command provisioning script.

@@ -1,0 +1,16 @@
+# StayKit — Litestream config for tenant "${SLUG}".
+# Replicates the SQLite database to S3-compatible storage every second.
+# Restored automatically on first boot via the litestream container's entrypoint.
+
+dbs:
+  - path: /data/staykit.db
+    replicas:
+      - type: s3
+        endpoint: ${LITESTREAM_ENDPOINT}
+        bucket: ${LITESTREAM_BUCKET}
+        path: ${SLUG}/db
+        access-key-id: ${LITESTREAM_ACCESS_KEY}
+        secret-access-key: ${LITESTREAM_SECRET}
+        retention: 720h
+        snapshot-interval: 24h
+        sync-interval: 1s

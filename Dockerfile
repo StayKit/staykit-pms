@@ -64,6 +64,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_module
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
+# Tenant ops scripts (e.g. bootstrap-tenant.mjs). Plain Node ESM — uses the
+# @prisma/client already present in the standalone bundle, no extra deps.
+COPY --from=builder --chown=nextjs:nodejs /app/bin ./bin
+
 COPY --chown=nextjs:nodejs docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
