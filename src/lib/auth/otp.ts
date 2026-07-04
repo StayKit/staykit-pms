@@ -14,7 +14,10 @@ const PEPPER = process.env.OTP_PEPPER || "dev-pepper-change-me";
 // shown on the sign-in screen. Real SMS/email dispatch is still a TODO, so this is
 // the only delivery path today. Always on outside production; opt in for a
 // production test/demo instance with OTP_EXPOSE_CODE=1 (no SMS provider needed).
-const EXPOSE_OTP = process.env.OTP_EXPOSE_CODE === "1" || process.env.NODE_ENV !== "production";
+// Evaluated per-call (not captured at import) so NODE_ENV is read at request time.
+function exposeOtp(): boolean {
+  return process.env.OTP_EXPOSE_CODE === "1" || process.env.NODE_ENV !== "production";
+}
 
 function hashCode(code: string): string {
   return createHash("sha256")
@@ -71,15 +74,15 @@ export async function requestOtp(
   });
 
   // TODO(notify): dispatch via MSG91 SMS / email provider. Until that lands,
-  // EXPOSE_OTP surfaces the code (logged + returned) instead of sending it.
-  if (EXPOSE_OTP) {
+  // exposeOtp() surfaces the code (logged + returned) instead of sending it.
+  if (exposeOtp()) {
     console.log(`[OTP] ${purpose} for ${contact}: ${code}`);
   }
 
   return {
     requestId: req.id,
     expiresIn: OTP.ttlMinutes * 60,
-    devCode: EXPOSE_OTP ? code : undefined,
+    devCode: exposeOtp() ? code : undefined,
   };
 }
 
