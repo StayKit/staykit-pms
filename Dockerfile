@@ -40,6 +40,19 @@ ENV NEXT_PUBLIC_DEMO_URL=${NEXT_PUBLIC_DEMO_URL}
 ENV DATABASE_URL="file:/tmp/build.db?connection_limit=1"
 RUN npm run db:push && npm run build
 
+# ───── 2b. prismacli: self-contained, production-only Prisma CLI for runtime `db push` ─────
+# The slim runner deliberately lacks the app's full node_modules. Prisma 6's CLI loads
+# @prisma/config, which drags in a dependency closure (effect, c12, empathic,
+# deepmerge-ts, …) that a cherry-picked copy of node_modules/{prisma,@prisma} misses —
+# the classic "Cannot find module 'effect'" crash. Installing the CLI on its own
+# captures that whole closure in one directory we can copy wholesale.
+FROM ${NODE_IMAGE} AS prismacli
+WORKDIR /cli
+COPY package.json /tmp/app-package.json
+RUN PV="$(node -p "require('/tmp/app-package.json').devDependencies.prisma")" \
+ && npm init -y >/dev/null 2>&1 \
+ && npm install --omit=dev --no-audit --no-fund "prisma@${PV}"
+
 # ───── 3. runner: minimal runtime — standalone server + Prisma CLI for db push ─────
 FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
@@ -63,11 +76,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Prisma schema + CLI/engines so the entrypoint can run `db push` against /data.
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+# App runtime Prisma bits (schema + generated client/engine used by the standalone
+# server). The CLI itself comes from the self-contained `prismacli` stage below so
+# `db push` has its full dependency closure.
+COPY --from=builder   --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder   --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder   --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=prismacli --chown=nextjs:nodejs /cli/node_modules ./prisma-cli/node_modules
 
 # Tenant ops scripts (e.g. bootstrap-tenant.mjs). Plain Node ESM — uses the
 # @prisma/client already present in the standalone bundle, no extra deps.

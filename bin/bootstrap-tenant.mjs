@@ -4,7 +4,7 @@
 // Runs *inside* the container after `prisma db push` has created the schema. It
 // inserts the initial Owner row and the first OWNER-role User, then prints the
 // login URL the operator should hand to the customer. The customer signs in by
-// requesting an OTP at /login the normal way (no magic link, no shortcut).
+// requesting an OTP at /signin the normal way (no magic link, no shortcut).
 //
 // Safety: refuses to run if any Owner already exists in the DB.
 //
@@ -86,9 +86,9 @@ try {
   console.log(`  Display name : ${name}`);
   console.log(`  Login phone  : ${phone}`);
   console.log(`  Login email  : ${email ?? "(none)"}`);
-  console.log(`  Login URL    : ${baseUrl}/login`);
+  console.log(`  Login URL    : ${baseUrl}/signin`);
   console.log("");
-  console.log("  Customer signs in by entering the phone above at /login and confirming the OTP");
+  console.log("  Customer signs in by entering the phone above at /signin and confirming the OTP");
   console.log("  delivered via the configured channel (MSG91/Resend/console). If no provider is");
   console.log("  configured, the OTP code is printed to the app container's stdout.");
   console.log("");

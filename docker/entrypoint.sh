@@ -7,7 +7,9 @@ set -e
 
 echo "[staykit] DATABASE_URL=${DATABASE_URL}"
 echo "[staykit] applying schema (prisma db push)…"
-node ./node_modules/prisma/build/index.js db push --skip-generate
+# The CLI lives in its own directory with a complete dependency closure (see the
+# Dockerfile `prismacli` stage); the schema is still discovered from ./prisma via CWD.
+node ./prisma-cli/node_modules/prisma/build/index.js db push --skip-generate
 
 echo "[staykit] starting server: $*"
 exec "$@"

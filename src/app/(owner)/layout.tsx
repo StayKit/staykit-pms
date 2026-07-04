@@ -12,7 +12,9 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
 
   const { properties, activeId } = await resolveActiveProperty(ctx.ownerId);
   const property = properties.find((p) => p.id === activeId);
-  if (!property) redirect("/signin");
+  // A freshly-provisioned tenant has no property yet — send them to first-run
+  // onboarding to create one, not back to sign-in (which looks like a login loop).
+  if (!property) redirect("/onboarding");
 
   const [rooms, channels, onlineEnabled, cancelRequests] = await Promise.all([
     prisma.room.findMany({

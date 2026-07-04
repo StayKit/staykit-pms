@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getAppContext } from "@/lib/auth/context";
 import { resolveActiveProperty } from "@/lib/property/active";
@@ -11,13 +12,16 @@ import { BookingLink } from "@/components/owner/BookingLink";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const ctx = (await getAppContext())!;
+  const ctx = await getAppContext();
+  if (!ctx) redirect("/signin");
   const { activeId } = await resolveActiveProperty(ctx.ownerId);
-  const property = (await prisma.property.findFirst({
+  const property = await prisma.property.findFirst({
     where: { id: activeId ?? undefined, ownerId: ctx.ownerId, active: true },
     orderBy: { createdAt: "asc" },
     include: { _count: { select: { rooms: true } } },
-  }))!;
+  });
+  // No property yet (new tenant) — onboarding owns first-run property creation.
+  if (!property) redirect("/onboarding");
 
   const t0 = today();
   const t1 = addDays(t0, 1);
