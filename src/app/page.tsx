@@ -11,6 +11,12 @@ export const metadata = {
 
 const GH = "https://github.com/staykit/staykit";
 
+// Where the "Try the demo" CTAs point. Defaults to the same-origin owner
+// dashboard (correct for single-instance / self-host setups). Split deployments
+// that serve the demo on a separate host set NEXT_PUBLIC_DEMO_URL at build time
+// (e.g. https://demo.staykit.in/dashboard).
+const DEMO_URL = process.env.NEXT_PUBLIC_DEMO_URL || "/dashboard";
+
 /* ── tiny inline icons (match the design's stroke weights) ─────────── */
 function ArrowRight() {
   return (
@@ -272,7 +278,7 @@ export default function LandingPage() {
             <Link href="/signin" className="btn btn-ghost btn-sm">
               Sign in
             </Link>
-            <Link href="/dashboard" className="btn btn-primary btn-sm">
+            <Link href={DEMO_URL} className="btn btn-primary btn-sm">
               Try the demo
             </Link>
           </div>
@@ -298,7 +304,7 @@ export default function LandingPage() {
               <strong style={{ color: "var(--ink)" }}>run it all from Claude.</strong>
             </p>
             <div className="hero-ctas">
-              <Link href="/dashboard" className="btn btn-accent btn-lg">
+              <Link href={DEMO_URL} className="btn btn-accent btn-lg">
                 See the live demo
                 <ArrowRight />
               </Link>
@@ -1935,7 +1941,7 @@ export default function LandingPage() {
             commitment.
           </p>
           <div className="cta-row">
-            <Link href="/dashboard" className="btn btn-accent btn-lg">
+            <Link href={DEMO_URL} className="btn btn-accent btn-lg">
               See the live demo
               <ArrowRight />
             </Link>
@@ -1978,7 +1984,7 @@ export default function LandingPage() {
                   <a href="#compare">Compare</a>
                 </li>
                 <li>
-                  <Link href="/dashboard">Live demo</Link>
+                  <Link href={DEMO_URL}>Live demo</Link>
                 </li>
               </ul>
             </div>

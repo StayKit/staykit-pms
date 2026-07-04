@@ -30,6 +30,11 @@ COPY . .
 # `public/` may not exist in the repo; standalone needs it copied explicitly later.
 RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
+# Optional: point the landing's "Try the demo" CTAs at a separate demo host.
+# NEXT_PUBLIC_* is inlined at build time, so it must be present here. Defaults to
+# the same-origin /dashboard when unset (see src/app/page.tsx).
+ARG NEXT_PUBLIC_DEMO_URL
+ENV NEXT_PUBLIC_DEMO_URL=${NEXT_PUBLIC_DEMO_URL}
 # Build only needs a *valid* sqlite URL — no real data dir is touched. We push the
 # schema to a throwaway file so any DB access during static analysis finds tables.
 ENV DATABASE_URL="file:/tmp/build.db?connection_limit=1"
