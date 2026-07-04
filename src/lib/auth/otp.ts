@@ -10,6 +10,12 @@ import type { OtpPurpose } from "@prisma/client";
 
 const PEPPER = process.env.OTP_PEPPER || "dev-pepper-change-me";
 
+// When true, the generated OTP is logged and returned to the caller so it can be
+// shown on the sign-in screen. Real SMS/email dispatch is still a TODO, so this is
+// the only delivery path today. Always on outside production; opt in for a
+// production test/demo instance with OTP_EXPOSE_CODE=1 (no SMS provider needed).
+const EXPOSE_OTP = process.env.OTP_EXPOSE_CODE === "1" || process.env.NODE_ENV !== "production";
+
 function hashCode(code: string): string {
   return createHash("sha256")
     .update(code + PEPPER)
@@ -64,15 +70,16 @@ export async function requestOtp(
     data: { contact, purpose, codeHash: hashCode(code), expiresAt, ip },
   });
 
-  // TODO(notify): dispatch via MSG91 SMS / email provider. For now, log it.
-  if (process.env.NODE_ENV !== "production") {
+  // TODO(notify): dispatch via MSG91 SMS / email provider. Until that lands,
+  // EXPOSE_OTP surfaces the code (logged + returned) instead of sending it.
+  if (EXPOSE_OTP) {
     console.log(`[OTP] ${purpose} for ${contact}: ${code}`);
   }
 
   return {
     requestId: req.id,
     expiresIn: OTP.ttlMinutes * 60,
-    devCode: process.env.NODE_ENV !== "production" ? code : undefined,
+    devCode: EXPOSE_OTP ? code : undefined,
   };
 }
 

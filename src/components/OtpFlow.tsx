@@ -126,7 +126,7 @@ export function OtpFlow({
       </div>
       {devCode && (
         <div className="dev-code">
-          Dev mode: your code is <b>{devCode}</b> (sent via SMS in production).
+          Your code is <b>{devCode}</b> — shown here because no SMS provider is configured yet.
         </div>
       )}
       {error && (
