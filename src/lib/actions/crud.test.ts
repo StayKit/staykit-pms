@@ -15,6 +15,7 @@ import {
 } from "./rooms";
 import {
   createRatePlanAction,
+  updateRatePlanAction,
   deleteRatePlanAction,
   createMaintenanceBlockAction,
   deleteMaintenanceBlockAction,
@@ -176,6 +177,61 @@ describe("rate plans & maintenance", () => {
       endDate: "2026-11-01",
     });
     expect(r.ok).toBe(false);
+  });
+
+  it("edits a plan, replacing overrides and preserving omitted daysOfWeek", async () => {
+    const r = await createRatePlanAction(fx.property.id, {
+      name: "Weekend",
+      startDate: "2026-11-01",
+      endDate: "2026-11-30",
+      priority: 5,
+      daysOfWeek: "0000110",
+      overrides: [{ roomTypeId: fx.roomType.id, amountRupees: 9000 }],
+    });
+    const planId = ((r.data as { id: string }) ?? {}).id;
+
+    const u = await updateRatePlanAction(planId, {
+      name: "Weekend v2",
+      startDate: "2026-11-01",
+      endDate: "2026-12-15",
+      priority: 7,
+      minStay: 2,
+      overrides: [{ roomTypeId: fx.roomType.id, amountRupees: 9500 }],
+    });
+    expect(u.ok).toBe(true);
+
+    const plan = await prisma.ratePlan.findUnique({
+      where: { id: planId },
+      include: { overrides: true },
+    });
+    expect(plan?.name).toBe("Weekend v2");
+    expect(plan?.priority).toBe(7);
+    expect(plan?.minStay).toBe(2);
+    expect(plan?.daysOfWeek).toBe("0000110");
+    expect(plan?.overrides).toHaveLength(1);
+    expect(plan?.overrides[0].amount).toBe(9500_00);
+  });
+
+  it("rejects edits to an unknown plan and a reversed date range", async () => {
+    const missing = await updateRatePlanAction("nope", {
+      name: "X",
+      startDate: "2026-11-01",
+      endDate: "2026-11-02",
+    });
+    expect(missing.ok).toBe(false);
+
+    const r = await createRatePlanAction(fx.property.id, {
+      name: "Plan",
+      startDate: "2026-11-01",
+      endDate: "2026-11-10",
+    });
+    const planId = ((r.data as { id: string }) ?? {}).id;
+    const bad = await updateRatePlanAction(planId, {
+      name: "Plan",
+      startDate: "2026-11-10",
+      endDate: "2026-11-01",
+    });
+    expect(bad.ok).toBe(false);
   });
 
   it("blocks a room and rejects overlap with a booking", async () => {

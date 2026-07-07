@@ -37,7 +37,9 @@ export default async function RatePlansPage({ params }: { params: Promise<{ id: 
           startDate: ymd(p.startDate),
           endDate: ymd(p.endDate),
           minStay: p.minStay,
+          daysOfWeek: p.daysOfWeek,
           overrides: p.overrides.map((o) => ({
+            roomTypeId: o.roomTypeId,
             typeName: o.roomType.name,
             rupees: toRupees(o.amount),
           })),

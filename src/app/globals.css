@@ -344,13 +344,21 @@ input, select, textarea { font: inherit; color: inherit; }
   border-radius: 9px;
   border: 1px solid var(--line-strong);
   background: var(--surface);
-  display: grid; place-items: center;
+  /* inline-grid so adjacent buttons in a table cell sit side by side */
+  display: inline-grid; place-items: center;
+  vertical-align: middle;
   cursor: pointer;
   color: var(--ink-2);
   transition: background .12s;
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
 .icon-btn .icon { width: 16px; height: 16px; }
+
+/* Adjacent action buttons in a table cell get breathing room */
+.tbl td .btn + .btn,
+.tbl td .btn + .icon-btn,
+.tbl td .icon-btn + .btn,
+.tbl td .icon-btn + .icon-btn { margin-left: 6px; }
 
 /* ── Cards ────────────────────────────────────────────────── */
 .card {

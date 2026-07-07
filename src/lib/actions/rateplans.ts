@@ -75,6 +75,70 @@ export async function createRatePlanAction(
   }
 }
 
+// For updates, fields the form may omit must not be reset to create-time
+// defaults (a seeded weekend plan's daysOfWeek would silently become
+// every-day) — so they are optional here and preserved when absent.
+const ratePlanUpdateSchema = ratePlanSchema.extend({
+  daysOfWeek: z
+    .string()
+    .regex(/^[01]{7}$/, "Days mask must be 7 bits")
+    .optional(),
+  refundable: z.boolean().optional(),
+});
+
+export async function updateRatePlanAction(
+  id: string,
+  input: z.input<typeof ratePlanUpdateSchema>,
+): Promise<ActionResult> {
+  try {
+    const data = ratePlanUpdateSchema.parse(input);
+    const ctx = await requireContext();
+    const plan = await prisma.ratePlan.findFirst({
+      where: { id, property: { ownerId: ctx.ownerId } },
+    });
+    if (!plan) return fail("Rate plan not found.");
+    await assertOwnedProperty(ctx, plan.propertyId, "rates:write");
+    const start = parseYmd(data.startDate);
+    const end = parseYmd(data.endDate);
+    if (end < start) return fail("End date must be on or after the start date.");
+
+    await prisma.ratePlan.update({
+      where: { id },
+      data: {
+        name: data.name,
+        priority: data.priority,
+        startDate: start,
+        endDate: end,
+        daysOfWeek: data.daysOfWeek ?? plan.daysOfWeek,
+        minStay: data.minStay,
+        maxStay: data.maxStay ?? plan.maxStay,
+        refundable: data.refundable ?? plan.refundable,
+        overrides: {
+          deleteMany: {},
+          create: data.overrides.map((o) => ({
+            roomTypeId: o.roomTypeId,
+            amount: toPaise(o.amountRupees),
+          })),
+        },
+      },
+    });
+    await writeAudit({
+      ownerId: ctx.ownerId,
+      actorType: "USER",
+      actorName: ctx.name,
+      action: "RATE_PLAN_UPDATED",
+      entityType: "RatePlan",
+      entityId: id,
+      summary: `edited rate plan ${data.name}`,
+    });
+    revalidatePath(`/properties/${plan.propertyId}/rate-plans`);
+    return ok();
+  } catch (e) {
+    if (e instanceof z.ZodError) return fail(e.errors[0].message);
+    return failFrom(e, "Could not update the rate plan.");
+  }
+}
+
 export async function deleteRatePlanAction(id: string): Promise<ActionResult> {
   try {
     const ctx = await requireContext();

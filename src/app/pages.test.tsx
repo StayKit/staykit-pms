@@ -355,10 +355,10 @@ describe("owner layout", () => {
     await expect(renderRSC(Layout({ children: "X" }))).rejects.toThrow("REDIRECT:/signin");
   });
 
-  it("redirects when the owner has no active property", async () => {
+  it("redirects to onboarding when the owner has no active property", async () => {
     await prisma.property.updateMany({ data: { active: false } });
     const { default: Layout } = await load("./(owner)/layout");
-    await expect(renderRSC(Layout({ children: "X" }))).rejects.toThrow("REDIRECT:/signin");
+    await expect(renderRSC(Layout({ children: "X" }))).rejects.toThrow("REDIRECT:/onboarding");
   });
 });
 
